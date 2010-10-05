@@ -9,7 +9,7 @@ def generate_uuid():
 
 class Usuario(Base):
     __tablename__ = "usuarios"
-
+    
     id = Column(String, primary_key=True, index=True, default=generate_uuid)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
@@ -200,3 +200,18 @@ class Cobranca(Base):
     data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     cliente = relationship("Cliente")
+
+
+class Mensagem(Base):
+    __tablename__ = "mensagens"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    remetente_id = Column(String, ForeignKey("usuarios.id"), nullable=False)
+    destinatario_id = Column(String, ForeignKey("usuarios.id"), nullable=False)
+    assunto = Column(String, nullable=True)
+    conteudo = Column(String, nullable=False)
+    lida = Column(Boolean, default=False)
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    remetente = relationship("Usuario", foreign_keys=[remetente_id])
+    destinatario = relationship("Usuario", foreign_keys=[destinatario_id])

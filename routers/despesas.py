@@ -49,13 +49,13 @@ def listar_contas(db: Session) -> list[models.ContaBancaria]:
 
 
 def saldo_conta(db: Session, conta: models.ContaBancaria) -> float:
-    """Saldo real da conta = saldo_inicial + entradas - despesas ligadas à conta."""
+    """Saldo real da conta = entradas - despesas ligadas à conta."""
     movimentos = db.query(models.Movimento).filter(
         models.Movimento.conta_bancaria_id == conta.id
     ).all()
     entradas = sum(m.valor for m in movimentos if m.tipo == "Entrada")
     saidas = sum(m.valor for m in movimentos if m.tipo == "Saida")
-    return conta.saldo_inicial + entradas - saidas
+    return entradas - saidas
 
 
 def _movimento_out(m: models.Movimento) -> dict:
@@ -105,7 +105,7 @@ def listar_movimentos(db: Session = Depends(database.get_db)):
             "movimentos": [_movimento_out(m) for m in movimentos],
             "saldo": calcular_saldo(db),
             "saldo_bancario": sum(saldo_conta(db, c) for c in contas),
-            "saldo_total": calcular_saldo(db) + sum(c.saldo_inicial for c in contas),
+            "saldo_total": calcular_saldo(db),
             "contas": [_conta_out(db, c) for c in contas],
             "categorias": [_categoria_out(c) for c in listar_categorias(db)],
         },

@@ -269,14 +269,12 @@ class ContaBancariaCreate(BaseSchema):
     banco: str
     numero_conta: Optional[str] = None
     titular: Optional[str] = None
-    saldo_inicial: Optional[float] = 0.0
 
 class ContaBancariaOut(BaseSchema):
     id: str
     banco: str
     numero_conta: Optional[str] = None
     titular: Optional[str] = None
-    saldo_inicial: float = 0.0
     saldo: float = 0.0
     data_criacao: datetime
 
@@ -307,3 +305,34 @@ class CobrancaOut(BaseSchema):
     data_pagamento: Optional[str] = None
     observacao: Optional[str] = None
     data_criacao: datetime
+
+
+class MensagemCreate(BaseSchema):
+    destinatario_id: str
+    assunto: Optional[str] = None
+    conteudo: str
+
+
+class MensagemUpdate(BaseSchema):
+    lida: Optional[bool] = None
+
+
+class MensagemOut(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+        extra='ignore',
+        alias_generator=to_camel
+    )
+
+    id: str
+    remetente_id: str
+    destinatario_id: str
+    assunto: Optional[str] = None
+    conteudo: str
+    lida: bool
+    data_criacao: datetime
+    remetente_nome: Optional[str] = None
+    destinatario_nome: Optional[str] = None
+    remetente_email: Optional[str] = None
+    destinatario_email: Optional[str] = None

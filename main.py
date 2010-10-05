@@ -5,7 +5,7 @@ from fastapi.responses import Response
 import models
 from database import engine
 
-from routers import auth_router, clientes, contratos, intervencoes, tecnicos, registros_horas, stats, dev, relatorios, relatorio_contratos, relatorio_geral, relatorio_financeiro, notificacoes, despesas, cobrancas
+from routers import auth_router, clientes, contratos, intervencoes, tecnicos, registros_horas, stats, dev, relatorios, relatorio_contratos, relatorio_geral, relatorio_financeiro, notificacoes, despesas, cobrancas, mensagens
 from database import migrar
 
 models.Base.metadata.create_all(bind=engine)
@@ -50,6 +50,7 @@ app.include_router(relatorio_financeiro.router, prefix="/relatorios")
 app.include_router(notificacoes.router)
 app.include_router(despesas.router, prefix="/financeiro")
 app.include_router(cobrancas.router)
+app.include_router(mensagens.router)
 
 @app.on_event("startup")
 def criar_tabelas():

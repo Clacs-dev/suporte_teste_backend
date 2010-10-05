@@ -1,9 +1,32 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
+from sqlalchemy import exists
 import database, models, schemas
 from datetime import datetime
 
 router = APIRouter(prefix="/cobrancas", tags=["cobrancas"])
+
+
+def _clientes_cobranca(db):
+    """Clientes que devem aparecer no módulo de cobranças.
+
+    Só entram clientes que tenham contrato: tipo "Com Contrato" e pelo menos
+    um contrato com status "Ativo". Assim clientes "Sem Contrato" nunca são
+    listados, mesmo que tenham registos de cobrança antigos.
+    """
+    return (
+        db.query(models.Cliente)
+        .filter(
+            models.Cliente.status == "Ativo",
+            models.Cliente.tipo_cliente == "Com Contrato",
+            exists().where(
+                (models.Contrato.cliente_id == models.Cliente.id)
+                & (models.Contrato.status == "Ativo")
+            ),
+        )
+        .order_by(models.Cliente.nome.asc())
+        .all()
+    )
 
 
 @router.get("", response_model=schemas.APIResponse)
@@ -22,12 +45,7 @@ def listar_cobrancas(mes: int = None, ano: int = None, db: Session = Depends(dat
 
 @router.get("/mapa", response_model=schemas.APIResponse)
 def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
-    clientes = (
-        db.query(models.Cliente)
-        .filter(models.Cliente.status == "Ativo")
-        .order_by(models.Cliente.nome.asc())
-        .all()
-    )
+    clientes = _clientes_cobranca(db)
     registos = {
         c.cliente_id: c
         for c in db.query(models.Cobranca).filter(
@@ -69,12 +87,7 @@ def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
 
 @router.get("/historico")
 def historico_cobrancas(db: Session = Depends(database.get_db)):
-    clientes = (
-        db.query(models.Cliente)
-        .filter(models.Cliente.status == "Ativo")
-        .order_by(models.Cliente.nome.asc())
-        .all()
-    )
+    clientes = _clientes_cobranca(db)
     registos = db.query(models.Cobranca).all()
     por_cliente = {}
     for c in registos:
