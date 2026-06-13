@@ -10,14 +10,18 @@ models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CLACS API", version="1.0.0")
 
+origins = [
+    "http://localhost:5173",  # desenvolvimento
+    "https://clacs-frontend.vercel.app",  # produção
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Permitir todos durante desenvolvimento
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 app.include_router(auth_router.router)
 app.include_router(clientes.router)
 app.include_router(contratos.router)

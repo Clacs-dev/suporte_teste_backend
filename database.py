@@ -7,8 +7,8 @@ DATABASE_URL = os.environ.get("DATABASE_URL")
 if DATABASE_URL:
     # Render fornece URLs com o prefixo "postgres://" (legado),
     # mas SQLAlchemy 1.4+ exige "postgresql://". Corrigimos aqui.
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    if DATABASE_URL.startswith("postgresql://clacs_db_user:oInC5qGSAdmdNzXTrRzeH30eYDv2IKwX@dpg-d8bda6mq1p3s738oera0-a/clacs_db"):
+        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://clacs_db_user:oInC5qGSAdmdNzXTrRzeH30eYDv2IKwX@dpg-d8bda6mq1p3s738oera0-a.frankfurt-postgres.render.com/clacs_db", 1)
 
     engine = create_engine(
         DATABASE_URL,

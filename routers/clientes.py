@@ -96,11 +96,21 @@ def update_cliente(id: str, cliente: schemas.ClienteUpdate, db: Session = Depend
     db_cliente = db.query(models.Cliente).filter(models.Cliente.id == id).first()
     if not db_cliente:
         return {"success": False, "error": "Cliente não encontrado"}
-    
+
     update_data = cliente.model_dump(exclude_unset=True)
+
+    # Tratar senha separadamente — atualizar o utilizador associado
+    senha = update_data.pop("senha", None)
+    if senha:
+        db_usuario = db.query(models.Usuario).filter(
+            models.Usuario.id == db_cliente.usuario_id
+        ).first()
+        if db_usuario:
+            db_usuario.hashed_password = auth.get_password_hash(senha)
+
     for key, value in update_data.items():
         setattr(db_cliente, key, value)
-    
+
     db.commit()
     db.refresh(db_cliente)
     return {"success": True, "data": schemas.ClienteOut.model_validate(db_cliente).model_dump()}
@@ -110,6 +120,27 @@ def delete_cliente(id: str, db: Session = Depends(database.get_db)):
     db_cliente = db.query(models.Cliente).filter(models.Cliente.id == id).first()
     if not db_cliente:
         return {"success": False, "error": "Cliente não encontrado"}
+
+    # Bloquear exclusão se houver intervenções associadas
+    tem_intervencoes = db.query(models.Intervencao).filter(
+        models.Intervencao.cliente_id == id
+    ).first()
+    if tem_intervencoes:
+        return {
+            "success": False,
+            "error": "Não é possível eliminar este cliente porque existem intervenções associadas. Elimine primeiro as intervenções."
+        }
+
+    # Bloquear exclusão se houver contratos associados
+    tem_contratos = db.query(models.Contrato).filter(
+        models.Contrato.cliente_id == id
+    ).first()
+    if tem_contratos:
+        return {
+            "success": False,
+            "error": "Não é possível eliminar este cliente porque existem contratos associados. Elimine primeiro os contratos."
+        }
+
     db.delete(db_cliente)
     db.commit()
     return {"success": True, "message": "Cliente deletado com sucesso"}

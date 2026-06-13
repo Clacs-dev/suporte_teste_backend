@@ -110,6 +110,19 @@ def delete_contrato(id: str, db: Session = Depends(database.get_db)):
                 "error": "Contrato não encontrado"
             }
 
+        # Bloquear exclusão se houver intervenções associadas a este contrato
+        # ou ao cliente deste contrato (intervenções sem contrato_id)
+        tem_intervencoes = db.query(models.Intervencao).filter(
+            (models.Intervencao.contrato_id == db_contrato.id) |
+            ((models.Intervencao.contrato_id == None) & (models.Intervencao.cliente_id == db_contrato.cliente_id))
+        ).first()
+
+        if tem_intervencoes:
+            return {
+                "success": False,
+                "error": "Não é possível eliminar este contrato porque existem intervenções associadas. Elimine primeiro as intervenções do cliente."
+            }
+
         db.delete(db_contrato)
         db.commit()
 

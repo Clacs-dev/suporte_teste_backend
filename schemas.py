@@ -53,6 +53,7 @@ class ClienteUpdate(BaseSchema):
     nome: Optional[str] = None
     telefone: Optional[str] = None
     empresa: Optional[str] = None
+    senha: Optional[str] = None
     nif: Optional[str] = None
     endereco: Optional[str] = None
     status: Optional[str] = None

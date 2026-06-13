@@ -112,3 +112,45 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 @router.post("/{id}/comentarios", response_model=schemas.APIResponse)
 def add_comentario(id: str, comentario: dict, db: Session = Depends(database.get_db)):
     return {"success": True, "data": {"id": "mock-comentario-id", "intervencao_id": id}}
+
+
+@router.delete("/{id}", response_model=schemas.APIResponse)
+def delete_intervencao(id: str, db: Session = Depends(database.get_db)):
+    db_intervencao = db.query(models.Intervencao).filter(models.Intervencao.id == id).first()
+    if not db_intervencao:
+        return {"success": False, "error": "Intervenção não encontrada"}
+
+    # Só permitir eliminar intervenções que ainda não foram iniciadas
+    if db_intervencao.status != "Aberto":
+        return {
+            "success": False,
+            "error": f"Não é possível eliminar: a intervenção já está '{db_intervencao.status}' e possui histórico associado."
+        }
+
+    # Bloquear se já houver horas registadas (segurança extra)
+    tem_horas = db.query(models.RegistroHoras).filter(
+        models.RegistroHoras.intervencao_id == id
+    ).first()
+    if tem_horas:
+        return {
+            "success": False,
+            "error": "Não é possível eliminar: existem horas registadas nesta intervenção."
+        }
+
+    db.delete(db_intervencao)
+    db.commit()
+    return {"success": True, "message": "Intervenção eliminada com sucesso"}
+
+
+@router.delete("/cliente/{cliente_id}/todas", response_model=schemas.APIResponse)
+def delete_intervencoes_cliente(cliente_id: str, db: Session = Depends(database.get_db)):
+    intervencoes = db.query(models.Intervencao).filter(
+        models.Intervencao.cliente_id == cliente_id
+    ).all()
+
+    count = len(intervencoes)
+    for i in intervencoes:
+        db.delete(i)
+    db.commit()
+
+    return {"success": True, "message": f"{count} intervenção(ões) eliminada(s) com sucesso"}
