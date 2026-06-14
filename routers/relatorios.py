@@ -533,7 +533,7 @@ def download_pdf_intervencao(
 
         pdf.set_x(10)
 
-        pdf.set_font('times', 'B', 12)
+        pdf.set_font('times', 'B', 10)
 
         pdf.multi_cell(
             190,
@@ -545,7 +545,7 @@ def download_pdf_intervencao(
 
         pdf.set_x(10)
 
-        pdf.set_font('times', 'B', 12)
+        pdf.set_font('times', 'B', 10)
 
         pdf.multi_cell(
             190,
