@@ -73,6 +73,8 @@ class TecnicoCreate(TecnicoBase):
     senha: Optional[str] = None
 
 class TecnicoUpdate(BaseSchema):
+    nome: Optional[str] = None      # ← adicionar
+    email: Optional[str] = None     # ← adicionar
     nivel: Optional[str] = None
     especialidade: Optional[str] = None
     horas_mes: Optional[int] = None

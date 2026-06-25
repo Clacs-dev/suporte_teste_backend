@@ -15,6 +15,13 @@ def get_tecnicos(db: Session = Depends(database.get_db)):
         results.append(t_dict)
     return {"success": True, "data": results}
 
+@router.get("/usuario/{usuario_id}", response_model=schemas.APIResponse)
+def get_tecnico_por_usuario(usuario_id: str, db: Session = Depends(database.get_db)):
+    tecnico = db.query(models.Tecnico).filter(models.Tecnico.usuario_id == usuario_id).first()
+    if not tecnico:
+        return {"success": False, "error": "Técnico não encontrado para este usuário"}
+    return {"success": True, "data": schemas.TecnicoOut.model_validate(tecnico).model_dump()}
+
 @router.post("", response_model=schemas.APIResponse)
 def create_tecnico(tecnico: schemas.TecnicoCreate, db: Session = Depends(database.get_db)):
     usuario_id = None
@@ -50,22 +57,23 @@ def update_tecnico(id: str, tecnico: schemas.TecnicoUpdate, db: Session = Depend
     db_tecnico = db.query(models.Tecnico).filter(models.Tecnico.id == id).first()
     if not db_tecnico:
         return {"success": False, "error": "Técnico não encontrado"}
-    
+
     update_data = tecnico.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(db_tecnico, key, value)
-    
+
     db.commit()
     db.refresh(db_tecnico)
     return {"success": True, "data": schemas.TecnicoOut.model_validate(db_tecnico).model_dump()}
 
-@router.get("/usuario/{usuario_id}", response_model=schemas.APIResponse)
-def get_tecnico_por_usuario(usuario_id: str, db: Session = Depends(database.get_db)):
-    tecnico = db.query(models.Tecnico).filter(models.Tecnico.usuario_id == usuario_id).first()
-    if not tecnico:
-        return {"success": False, "error": "Técnico não encontrado para este usuário"}
-    return {"success": True, "data": schemas.TecnicoOut.model_validate(tecnico).model_dump()}
-
+@router.post("/{id}/vincular-usuario", response_model=schemas.APIResponse)
+def vincular_usuario(id: str, body: dict, db: Session = Depends(database.get_db)):
+    db_tecnico = db.query(models.Tecnico).filter(models.Tecnico.id == id).first()
+    if not db_tecnico:
+        return {"success": False, "error": "Técnico não encontrado"}
+    db_tecnico.usuario_id = body.get("userId")
+    db.commit()
+    return {"success": True, "data": {"id": id}}
 
 @router.delete("/{id}", response_model=schemas.APIResponse)
 def delete_tecnico(id: str, db: Session = Depends(database.get_db)):
@@ -74,14 +82,17 @@ def delete_tecnico(id: str, db: Session = Depends(database.get_db)):
     if not db_tecnico:
         return {"success": False, "error": "Técnico não encontrado"}
 
-    intervencoes = db.query(models.Intervencao).filter(
+    # REGRA: Não permitir eliminar técnico associado a uma intervenção
+    intervencao_associada = db.query(models.Intervencao).filter(
         models.Intervencao.tecnico_id == id
-    ).all()
+    ).first()
 
-    for intervencao in intervencoes:
-        intervencao.tecnico_id = None
+    if intervencao_associada:
+        return {
+            "success": False,
+            "error": "Técnico associado a uma intervenção. Elimine ou desassocie primeiro as intervenções deste técnico."
+        }
 
     db.delete(db_tecnico)
     db.commit()
-
     return {"success": True, "data": {"id": id}}

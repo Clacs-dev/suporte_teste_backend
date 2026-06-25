@@ -87,11 +87,11 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 
     update_data = intervencao.model_dump(exclude_unset=True)
 
-    # ✅ Tratar string vazia como None para evitar FK inválida
+    # Tratar string vazia como None para evitar FK inválida
     if "tecnico_id" in update_data and update_data["tecnico_id"] == "":
         update_data["tecnico_id"] = None
 
-    # ✅ Validar que o técnico existe antes de atribuir
+    # Validar que o técnico existe antes de atribuir
     if update_data.get("tecnico_id"):
         tecnico = db.query(models.Tecnico).filter(
             models.Tecnico.id == update_data["tecnico_id"]
@@ -105,7 +105,6 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
     db.commit()
     db.refresh(db_intervencao)
 
-    # ✅ Devolver objeto completo atualizado (com camelCase) para o frontend
     return {"success": True, "data": serialize_intervencao(db_intervencao)}
 
 
@@ -120,14 +119,15 @@ def delete_intervencao(id: str, db: Session = Depends(database.get_db)):
     if not db_intervencao:
         return {"success": False, "error": "Intervenção não encontrada"}
 
-    # Só permitir eliminar intervenções que ainda não foram iniciadas
-    if db_intervencao.status != "Aberto":
+    # REGRA: Não permitir eliminar intervenção já resolvida/concluída
+    status_finais = ["Concluído", "Resolvido", "Fechado"]
+    if db_intervencao.status in status_finais:
         return {
             "success": False,
-            "error": f"Não é possível eliminar: a intervenção já está '{db_intervencao.status}' e possui histórico associado."
+            "error": "Intervenção já foi resolvida ou tratada. Não é possível eliminá-la."
         }
 
-    # Bloquear se já houver horas registadas (segurança extra)
+    # Bloquear se já houver horas registadas
     tem_horas = db.query(models.RegistroHoras).filter(
         models.RegistroHoras.intervencao_id == id
     ).first()
