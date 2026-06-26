@@ -12,7 +12,7 @@ def get_tecnicos(db: Session = Depends(database.get_db)):
     results = []
     for t in tecnicos:
         t_dict = schemas.TecnicoOut.model_validate(t).model_dump()
-        t_dict['intervencoesAtivas'] = sum(1 for i in t.intervencoes if i.status not in ["Concluído", "Fechado", "Resolvido"])
+        t_dict['intervencoesAtivas'] = sum(1 for i in t.intervencoes if i.status in ["Aberto", "Em Andamento", "Aguardando Cliente"])
         t_dict['intervencoesConcluidas'] = sum(1 for i in t.intervencoes if i.status in ["Concluído", "Resolvido"])
         t_dict['horasTrabalhadas'] = round(sum(
             float(r.horas or 0)
