@@ -260,14 +260,13 @@ def gerar_pdf_intervencao(
 
         pdf.ln(10)
 
-        pdf.set_x(10)
-        pdf.set_font('times', 'B', 12)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.set_font('times', 'B', 10)
         pdf.multi_cell(190, 6, "Caro Cliente faca sempre uma copia deste documento para atestar a veracidade dos factos, findo assistencia, o cliente dispoe de 2 dias uteis para eventuais reclamacoes.", 0, 'C')
 
-        pdf.set_x(10)
-        pdf.set_font('times', 'B', 12)
+        pdf.set_xy(10, pdf.get_y())
+        pdf.set_font('times', 'B', 10)
         pdf.multi_cell(190, 6, "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5", 0, 'C')
-
         pdf.ln(5)
 
         # --- Rodape ---
@@ -531,29 +530,13 @@ def download_pdf_intervencao(
 
         pdf.ln(10)
 
-        pdf.set_x(10)
-
+        pdf.set_xy(10, pdf.get_y())
         pdf.set_font('times', 'B', 10)
+        pdf.multi_cell(190, 6, "Caro Cliente faca sempre uma copia deste documento para atestar a veracidade dos factos, findo assistencia, o cliente dispoe de 2 dias uteis para eventuais reclamacoes.", 0, 'C')
 
-        pdf.multi_cell(
-            190,
-            6,
-            "Caro Cliente faca sempre uma copia deste documento para atestar a veracidade dos factos, findo assistencia, o cliente dispoe de 2 dias uteis para eventuais reclamacoes.",
-            0,
-            'C'
-        )
-
-        pdf.set_x(10)
-
+        pdf.set_xy(10, pdf.get_y())
         pdf.set_font('times', 'B', 10)
-
-        pdf.multi_cell(
-            190,
-            6,
-            "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5",
-            0,
-            'C'
-        )
+        pdf.multi_cell(190, 6, "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5", 0, 'C')
 
         pdf.ln(5)
 
