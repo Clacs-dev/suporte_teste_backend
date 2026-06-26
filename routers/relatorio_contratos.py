@@ -230,20 +230,23 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, db: Session = Depends(datab
             pdf.set_font('times', 'B', 9)
             pdf.cell(0, 7, "Descricao do Problema:", 0, 1)
             pdf.set_font('times', '', 9)
-            pdf.multi_cell(0, 6, clean_text(i.descricao or "Sem descricao."))
+            pdf.set_xy(10, pdf.get_y())
+            pdf.multi_cell(190, 6, clean_text(i.descricao or "Sem descricao."))
             pdf.ln(1)
 
-            # descrição da solução (registros de horas)
+           # descrição da solução (registros de horas)
             pdf.set_font('times', 'B', 9)
             pdf.cell(0, 7, "Descricao da Solucao:", 0, 1)
             pdf.set_font('times', '', 9)
             if i.registros_horas:
-                for reg in i.registros_horas:
-                    desc = clean_text(reg.descricao or "Sem descricao da solucao.")
-                    tec  = clean_text(reg.tecnico.nome if reg.tecnico else "N/A")
-                    pdf.multi_cell(0, 6, f"[{tec}] {desc}")
+              for reg in i.registros_horas:
+               desc = clean_text(reg.descricao or "Sem descricao da solucao.")
+               tec  = clean_text(reg.tecnico.nome if reg.tecnico else "N/A")
+               pdf.set_xy(10, pdf.get_y())
+               pdf.multi_cell(190, 6, f"[{tec}] {desc}")
             else:
-                pdf.multi_cell(0, 6, "Nenhuma solucao registrada.")
+                 pdf.set_xy(10, pdf.get_y())
+                 pdf.multi_cell(190, 6, "Nenhuma solucao registrada.")
 
             # separador entre intervenções
             pdf.ln(2)
