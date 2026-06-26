@@ -12,14 +12,22 @@ def get_tecnicos(db: Session = Depends(database.get_db)):
     results = []
     for t in tecnicos:
         t_dict = schemas.TecnicoOut.model_validate(t).model_dump()
-        t_dict['intervencoesAtivas'] = sum(1 for i in t.intervencoes if i.status not in ["Concluído", "Fechado"])
-        t_dict['horasMes'] = sum(
+        t_dict['intervencoesAtivas'] = sum(1 for i in t.intervencoes if i.status not in ["Concluído", "Fechado", "Resolvido"])
+        t_dict['intervencoesConcluidas'] = sum(1 for i in t.intervencoes if i.status in ["Concluído", "Resolvido"])
+        t_dict['horasTrabalhadas'] = round(sum(
+            float(r.horas or 0)
+            for i in t.intervencoes
+            for r in i.registros_horas
+        ), 2)
+        t_dict['horasMes'] = round(sum(
             float(r.horas or 0)
             for i in t.intervencoes
             for r in i.registros_horas
             if r.data and datetime.fromisoformat(str(r.data).replace('Z', '')).month == hoje.month
             and datetime.fromisoformat(str(r.data).replace('Z', '')).year == hoje.year
-        )
+        ), 2)
+        avaliacoes = [i.avaliacao for i in t.intervencoes if hasattr(i, 'avaliacao') and i.avaliacao is not None]
+        t_dict['avaliacaoMedia'] = round(sum(avaliacoes) / len(avaliacoes), 1) if avaliacoes else 0
         results.append(t_dict)
     return {"success": True, "data": results}
 
