@@ -74,14 +74,13 @@ def clean_text(text):
 
 
 def draw_section_header(pdf: PDF, title: str):
-    """Barra azul com título branco — secção principal."""
     pdf.set_fill_color(30, 90, 180)
     pdf.set_text_color(255, 255, 255)
     curr_y = pdf.get_y()
     pdf.rect(10, curr_y, 190, 10, 'F')
     pdf.set_font('times', 'B', 12)
-    pdf.set_x(12)
-    pdf.cell(0, 10, clean_text(title), 0, 1, 'L')
+    pdf.set_xy(12, curr_y)
+    pdf.cell(186, 10, clean_text(title), 0, 1, 'L')
     pdf.set_text_color(0, 0, 0)
     pdf.ln(2)
 
