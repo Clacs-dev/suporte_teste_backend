@@ -6,12 +6,20 @@ router = APIRouter(prefix="/tecnicos", tags=["tecnicos"])
 
 @router.get("", response_model=schemas.APIResponse)
 def get_tecnicos(db: Session = Depends(database.get_db)):
+    from datetime import datetime
+    hoje = datetime.now()
     tecnicos = db.query(models.Tecnico).all()
     results = []
     for t in tecnicos:
         t_dict = schemas.TecnicoOut.model_validate(t).model_dump()
         t_dict['intervencoesAtivas'] = sum(1 for i in t.intervencoes if i.status not in ["Concluído", "Fechado"])
-        t_dict['horasMes'] = t.horas_mes
+        t_dict['horasMes'] = sum(
+            float(r.horas or 0)
+            for i in t.intervencoes
+            for r in i.registros_horas
+            if r.data and datetime.fromisoformat(str(r.data).replace('Z', '')).month == hoje.month
+            and datetime.fromisoformat(str(r.data).replace('Z', '')).year == hoje.year
+        )
         results.append(t_dict)
     return {"success": True, "data": results}
 
