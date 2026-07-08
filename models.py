@@ -85,6 +85,7 @@ class Intervencao(Base):
     numero = Column(String, nullable=True) # Ex: INT-2026-001
     data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     data_atualizacao = Column(DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+    data_agendada = Column(DateTime, nullable=True)
     nome_assinatura_tecnico = Column(String, nullable=True)  # ← adiciona
     data_assinatura_tecnico = Column(String, nullable=True)  # ← adiciona
     nome_assinatura_cliente = Column(String, nullable=True)   # ← adiciona

@@ -122,6 +122,7 @@ class IntervencaoBase(BaseSchema):
     contrato_id: Optional[str] = None
     prioridade: Optional[str] = "Média"
     categoria: Optional[str] = None
+    data_agendada: Optional[datetime] = None
 
 class IntervencaoCreate(IntervencaoBase):
     anexos: Optional[List[dict]] = None
@@ -145,7 +146,7 @@ class IntervencaoOut(BaseModel):
         populate_by_name=True,
         from_attributes=True,
         extra='ignore',
-        alias_generator=to_camel  # cliente_id → clienteId, tecnico_id → tecnicoId, etc.
+        alias_generator=to_camel
     )
 
     id: str
@@ -161,7 +162,11 @@ class IntervencaoOut(BaseModel):
     horas_gastas: float
     data_criacao: datetime
     data_atualizacao: datetime
-
+    data_agendada: Optional[datetime] = None
+    cliente_nome: Optional[str] = None
+    tecnico_nome: Optional[str] = None
+    empresa_nome: Optional[str] = None
+    
 class RegistroHorasBase(BaseSchema):
     intervencao_id: str
     tecnico_id: str

@@ -11,6 +11,10 @@ def serialize_intervencao(i: models.Intervencao) -> dict:
     i_dict = schemas.IntervencaoOut.model_validate(i).model_dump(by_alias=True)
     i_dict['clienteNome'] = i.cliente.nome if i.cliente else 'Desconhecido'
     i_dict['tecnicoNome'] = i.tecnico.nome if i.tecnico else 'Não atribuído'
+    i_dict['empresaNome'] = i.cliente.empresa if i.cliente else None
+    ultimo_registo = sorted(i.registros_horas, key=lambda r: r.data_criacao, reverse=True)[0] if i.registros_horas else None
+    i_dict['horaInicio'] = ultimo_registo.hora_inicio if ultimo_registo else None
+    i_dict['horaFim'] = ultimo_registo.hora_fim if ultimo_registo else None
     return i_dict
 
 
