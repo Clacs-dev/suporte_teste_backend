@@ -157,6 +157,11 @@ def gerar_pdf_intervencao(
         pdf.set_font('times', '', 10)
         pdf.cell(0, 8, clean_text(i.cliente.email if i.cliente else "N/A"), 0, 1)
 
+        pdf.set_font('times', 'B', 10)
+        pdf.cell(40, 8, "Telefone:", 0)
+        pdf.set_font('times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.telefone if i.cliente and i.cliente.telefone else "N/A"), 0, 1)
+
         pdf.ln(5)
 
         # --- Tecnico ---

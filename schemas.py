@@ -51,6 +51,7 @@ class ClienteCreate(ClienteBase):
 
 class ClienteUpdate(BaseSchema):
     nome: Optional[str] = None
+    email: Optional[str] = None
     telefone: Optional[str] = None
     empresa: Optional[str] = None
     senha: Optional[str] = None
