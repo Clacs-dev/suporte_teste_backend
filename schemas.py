@@ -135,6 +135,8 @@ class IntervencaoUpdate(BaseSchema):
     status: Optional[str] = None
     prioridade: Optional[str] = None
     categoria: Optional[str] = None
+   
+
 
 class IntervencaoStatusUpdate(BaseSchema):
     status: str
@@ -167,6 +169,8 @@ class IntervencaoOut(BaseModel):
     cliente_nome: Optional[str] = None
     tecnico_nome: Optional[str] = None
     empresa_nome: Optional[str] = None
+
+
     
 class RegistroHorasBase(BaseSchema):
     intervencao_id: str
