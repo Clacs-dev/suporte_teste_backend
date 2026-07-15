@@ -77,3 +77,25 @@ def logout(current_user: models.Usuario = Depends(auth.get_current_active_user))
 @router.get("/profile", response_model=schemas.APIResponse)
 def read_users_me(current_user: models.Usuario = Depends(auth.get_current_active_user)):
     return {"success": True, "data": schemas.UsuarioOut.model_validate(current_user).model_dump()}
+
+@router.put("/profile", response_model=schemas.APIResponse)
+def update_users_me(
+    dados: schemas.UsuarioUpdateSelf,
+    current_user: models.Usuario = Depends(auth.get_current_active_user),
+    db: Session = Depends(database.get_db)
+):
+    if dados.email and dados.email != current_user.email:
+        existente = db.query(models.Usuario).filter(models.Usuario.email == dados.email).first()
+        if existente:
+            return {"success": False, "error": "Este email já está em uso por outro utilizador"}
+        current_user.email = dados.email
+
+    if dados.nome:
+        current_user.nome = dados.nome
+
+    if dados.nova_senha:
+        current_user.hashed_password = auth.get_password_hash(dados.nova_senha)
+
+    db.commit()
+    db.refresh(current_user)
+    return {"success": True, "data": schemas.UsuarioOut.model_validate(current_user).model_dump()}

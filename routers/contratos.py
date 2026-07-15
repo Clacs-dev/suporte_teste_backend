@@ -24,6 +24,7 @@ def get_contratos(
     for c in contratos:
         c_dict = schemas.ContratoOut.model_validate(c).model_dump()
         c_dict['clienteNome'] = c.cliente.nome if c.cliente else 'Desconhecido'
+        c_dict['empresaNome'] = c.cliente.empresa if c.cliente else None
         c_dict['clienteId'] = c.cliente_id
         
         # Calcular horas_usadas dinamicamente para garantir que o progresso é 100% real e funcional

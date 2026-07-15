@@ -29,6 +29,11 @@ class UsuarioLogin(BaseSchema):
 class UsuarioOut(UsuarioBase):
     id: str
 
+class UsuarioUpdateSelf(BaseSchema):
+    nome: Optional[str] = None
+    email: Optional[str] = None
+    nova_senha: Optional[str] = None
+
 class Token(BaseSchema):
     access_token: str
     refresh_token: str
