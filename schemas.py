@@ -74,11 +74,12 @@ class TecnicoCreate(TecnicoBase):
     senha: Optional[str] = None
 
 class TecnicoUpdate(BaseSchema):
-    nome: Optional[str] = None      # ← adicionar
-    email: Optional[str] = None     # ← adicionar
+    nome: Optional[str] = None
+    email: Optional[str] = None
     nivel: Optional[str] = None
     especialidade: Optional[str] = None
     horas_mes: Optional[int] = None
+    senha: Optional[str] = None
 
 class TecnicoOut(TecnicoBase):
     id: str

@@ -75,8 +75,20 @@ def update_tecnico(id: str, tecnico: schemas.TecnicoUpdate, db: Session = Depend
         return {"success": False, "error": "Técnico não encontrado"}
 
     update_data = tecnico.model_dump(exclude_unset=True)
+
+    # A senha não pertence à tabela Tecnico — trata-se à parte, na tabela Usuario
+    nova_senha = update_data.pop("senha", None)
+
     for key, value in update_data.items():
         setattr(db_tecnico, key, value)
+
+    if nova_senha:
+        if not db_tecnico.usuario_id:
+            return {"success": False, "error": "Este técnico não está vinculado a um usuário. Não é possível alterar a senha."}
+        db_usuario = db.query(models.Usuario).filter(models.Usuario.id == db_tecnico.usuario_id).first()
+        if not db_usuario:
+            return {"success": False, "error": "Usuário vinculado não encontrado."}
+        db_usuario.hashed_password = auth.get_password_hash(nova_senha)
 
     db.commit()
     db.refresh(db_tecnico)
