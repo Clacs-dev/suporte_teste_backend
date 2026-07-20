@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Optional
 import models, schemas, database
-
+from routers.notificacoes import criar_notificacao
 router = APIRouter(prefix="/intervencoes", tags=["intervencoes"])
 
 
@@ -76,6 +76,20 @@ def create_intervencao(intervencao: schemas.IntervencaoCreate, db: Session = Dep
     db.add(db_intervencao)
     db.commit()
     db.refresh(db_intervencao)
+
+    # Notificar todos os admins de que há uma nova intervenção
+    admins = db.query(models.Usuario).filter(models.Usuario.perfil == "admin").all()
+    cliente_nome = db_intervencao.cliente.nome if db_intervencao.cliente else "Cliente"
+    for admin in admins:
+        criar_notificacao(
+            db, admin.id,
+            titulo="Nova intervenção aberta",
+            mensagem=f"{cliente_nome} abriu a intervenção \"{db_intervencao.titulo}\" ({db_intervencao.numero})",
+            tipo="info",
+            intervencao_id=db_intervencao.id
+        )
+     
+
     return {"success": True, "data": {
         "id": db_intervencao.id,
         "numero": db_intervencao.numero,
@@ -95,19 +109,72 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
     if "tecnico_id" in update_data and update_data["tecnico_id"] == "":
         update_data["tecnico_id"] = None
 
-    # Validar que o técnico existe antes de atribuir
+    tecnico_novo = None
     if update_data.get("tecnico_id"):
-        tecnico = db.query(models.Tecnico).filter(
+        tecnico_novo = db.query(models.Tecnico).filter(
             models.Tecnico.id == update_data["tecnico_id"]
         ).first()
-        if not tecnico:
+        if not tecnico_novo:
             return {"success": False, "error": "Técnico não encontrado"}
+
+    tecnico_id_anterior = db_intervencao.tecnico_id
+    status_anterior = db_intervencao.status
 
     for key, value in update_data.items():
         setattr(db_intervencao, key, value)
 
     db.commit()
     db.refresh(db_intervencao)
+
+    # Notificar o técnico se acabou de ser atribuído a esta intervenção
+    if tecnico_novo and tecnico_novo.id != tecnico_id_anterior and tecnico_novo.usuario_id:
+        criar_notificacao(
+            db, tecnico_novo.usuario_id,
+            titulo="Nova intervenção atribuída",
+            mensagem=f"Foi-lhe atribuída a intervenção \"{db_intervencao.titulo}\" ({db_intervencao.numero})",
+            tipo="info",
+            intervencao_id=db_intervencao.id
+        )
+
+    # Notificar admins, cliente e técnico quando a intervenção é concluída/resolvida
+    status_concluidos = ["Concluído", "Resolvido", "Fechado"]
+    if db_intervencao.status in status_concluidos and status_anterior not in status_concluidos:
+        destinatarios_ids = set()
+
+        admins = db.query(models.Usuario).filter(models.Usuario.perfil == "admin").all()
+        for admin in admins:
+            destinatarios_ids.add(admin.id)
+
+        if db_intervencao.cliente and db_intervencao.cliente.usuario_id:
+            destinatarios_ids.add(db_intervencao.cliente.usuario_id)
+
+        if db_intervencao.tecnico and db_intervencao.tecnico.usuario_id:
+            destinatarios_ids.add(db_intervencao.tecnico.usuario_id)
+
+        for usuario_id in destinatarios_ids:
+            criar_notificacao(
+                db, usuario_id,
+                titulo="Intervenção concluída",
+                mensagem=f"A intervenção \"{db_intervencao.titulo}\" ({db_intervencao.numero}) foi marcada como {db_intervencao.status}",
+                tipo="success",
+                intervencao_id=db_intervencao.id
+            )
+    # Notificar admins e técnico quando o CLIENTE fecha a intervenção
+    if db_intervencao.status == "Fechado" and status_anterior != "Fechado":
+        destinatarios_fecho = set()
+        admins = db.query(models.Usuario).filter(models.Usuario.perfil == "admin").all()
+        for admin in admins:
+            destinatarios_fecho.add(admin.id)
+        if db_intervencao.tecnico and db_intervencao.tecnico.usuario_id:
+            destinatarios_fecho.add(db_intervencao.tecnico.usuario_id)
+        for usuario_id in destinatarios_fecho:
+            criar_notificacao(
+                db, usuario_id,
+                titulo="Intervenção fechada pelo cliente",
+                mensagem=f"O cliente fechou a intervenção \"{db_intervencao.titulo}\" ({db_intervencao.numero})",
+                tipo="info",
+                intervencao_id=db_intervencao.id
+            )
 
     return {"success": True, "data": serialize_intervencao(db_intervencao)}
 

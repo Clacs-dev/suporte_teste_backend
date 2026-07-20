@@ -201,3 +201,19 @@ class APIResponse(BaseSchema):
     success: bool
     data: Optional[dict | list | str | int | float | bool] = None
     error: Optional[str] = None
+
+class NotificacaoOut(BaseModel):
+    model_config = ConfigDict(
+        populate_by_name=True,
+        from_attributes=True,
+        extra='ignore',
+        alias_generator=to_camel
+    )
+
+    id: str
+    titulo: str
+    mensagem: Optional[str] = None
+    tipo: str
+    lida: bool
+    intervencao_id: Optional[str] = None
+    data_criacao: datetime

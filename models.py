@@ -113,3 +113,15 @@ class RegistroHoras(Base):
 
     intervencao = relationship("Intervencao", back_populates="registros_horas")
     tecnico = relationship("Tecnico", back_populates="registros_horas")
+
+class Notificacao(Base):
+    __tablename__ = "notificacoes"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    usuario_id = Column(String, ForeignKey("usuarios.id"), nullable=False)
+    titulo = Column(String, nullable=False)
+    mensagem = Column(String, nullable=True)
+    tipo = Column(String, default="info")  # info, success, warning
+    lida = Column(Boolean, default=False)
+    intervencao_id = Column(String, ForeignKey("intervencoes.id"), nullable=True)
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))

@@ -3,3 +3,9 @@ __pycache__/
 *.pyc
 *.db
 .env
+*.sql
+*.zip
+backup_*
+check.py
+listar_usuarios.py
+reset_admin.py
