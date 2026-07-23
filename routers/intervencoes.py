@@ -224,6 +224,12 @@ def delete_intervencao(id: str, db: Session = Depends(database.get_db)):
             "error": "Não é possível eliminar: existem horas registadas nesta intervenção."
         }
 
+    db.query(models.Notificacao).filter(
+        models.Notificacao.intervencao_id == id
+    ).delete(synchronize_session=False)
+    db.query(models.Anexo).filter(
+        models.Anexo.intervencao_id == id
+    ).delete(synchronize_session=False)
     db.delete(db_intervencao)
     db.commit()
     return {"success": True, "message": "Intervenção eliminada com sucesso"}
