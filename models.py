@@ -34,6 +34,7 @@ class Cliente(Base):
 
     contratos = relationship("Contrato", back_populates="cliente", cascade="all, delete-orphan")
     intervencoes = relationship("Intervencao", back_populates="cliente", cascade="all, delete-orphan")
+    
 
 class Tecnico(Base):
     __tablename__ = "tecnicos"
@@ -90,6 +91,8 @@ class Intervencao(Base):
     data_assinatura_tecnico = Column(String, nullable=True)  # ← adiciona
     nome_assinatura_cliente = Column(String, nullable=True)   # ← adiciona
     data_assinatura_cliente = Column(String, nullable=True)   # ← adiciona
+    modo_resolucao = Column(String, nullable=True)  # Remoto, Presencial
+    
 
 
 
@@ -97,7 +100,8 @@ class Intervencao(Base):
     cliente = relationship("Cliente", back_populates="intervencoes")
     tecnico = relationship("Tecnico", back_populates="intervencoes")
     registros_horas = relationship("RegistroHoras", back_populates="intervencao", cascade="all, delete-orphan")
-
+    anexos = relationship("Anexo", back_populates="intervencao", cascade="all, delete-orphan")
+    
 class RegistroHoras(Base):
     __tablename__ = "registros_horas"
 
@@ -125,3 +129,16 @@ class Notificacao(Base):
     lida = Column(Boolean, default=False)
     intervencao_id = Column(String, ForeignKey("intervencoes.id"), nullable=True)
     data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Anexo(Base):
+    __tablename__ = "anexos"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    intervencao_id = Column(String, ForeignKey("intervencoes.id"), nullable=False)
+    url = Column(String, nullable=False)
+    nome = Column(String, nullable=True)
+    tipo = Column(String, nullable=True)  # image, pdf, doc
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    intervencao = relationship("Intervencao", back_populates="anexos")    

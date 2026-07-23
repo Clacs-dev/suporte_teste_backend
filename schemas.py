@@ -130,9 +130,11 @@ class IntervencaoBase(BaseSchema):
     prioridade: Optional[str] = "Média"
     categoria: Optional[str] = None
     data_agendada: Optional[datetime] = None
+    modo_resolucao: Optional[str] = None
 
 class IntervencaoCreate(IntervencaoBase):
     anexos: Optional[List[dict]] = None
+    
 
 class IntervencaoUpdate(BaseSchema):
     titulo: Optional[str] = None
@@ -141,7 +143,7 @@ class IntervencaoUpdate(BaseSchema):
     status: Optional[str] = None
     prioridade: Optional[str] = None
     categoria: Optional[str] = None
-   
+    modo_resolucao: Optional[str] = None
 
 
 class IntervencaoStatusUpdate(BaseSchema):
@@ -175,6 +177,7 @@ class IntervencaoOut(BaseModel):
     cliente_nome: Optional[str] = None
     tecnico_nome: Optional[str] = None
     empresa_nome: Optional[str] = None
+    modo_resolucao: Optional[str] = None
 
 
     

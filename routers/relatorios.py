@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 import database, models
 from fpdf import FPDF
 import io
+import requests
+import tempfile, os
 import unicodedata
 from datetime import datetime
 
@@ -59,10 +61,14 @@ class PDF(FPDF):
             self.ln(10)
 
     def footer(self):
-        self.set_y(-15)
-        self.set_font('times', 'I', 8)
+        self.set_y(-25)
+        self.set_font('times', '', 7)
         self.set_text_color(128, 128, 128)
-        self.cell(0, 10, f'Pagina {self.page_no()} de {{nb}}', 0, 0, 'C')
+        self.cell(0, 4, "Endereco: Municipio de Luanda, Bairro: Cassenda, Rua: casa s/N", 0, 1, 'C')
+        self.cell(0, 4, "NF: 541733079", 0, 1, 'C')
+        self.cell(0, 4, "Tel. 92 505 439 / 918 94 78", 0, 1, 'C')
+        self.set_font('times', 'I', 8)
+        self.cell(0, 6, f'Pagina {self.page_no()} de {{nb}}', 0, 0, 'C')
 
 
 def clean_text(text):
@@ -102,10 +108,14 @@ def gerar_pdf_intervencao(
             raise HTTPException(status_code=404, detail="Intervencao nao encontrada")
         
         pdf = PDF()
+        pdf.set_auto_page_break(auto=True, margin=35)
         pdf.alias_nb_pages()
         pdf.add_page()
         
         def draw_section_header(pdf, title):
+             # se não couber o cabeçalho + pelo menos uma linha, salta de página
+            if pdf.get_y() + 20 > pdf.h - 35:
+                pdf.add_page()
             pdf.set_fill_color(200, 225, 255)
             curr_y = pdf.get_y()
             pdf.rect(10, curr_y, 190, 10, 'F')
@@ -172,7 +182,54 @@ def gerar_pdf_intervencao(
         pdf.set_font('times', '', 10)
         pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Nao atribuido"), 0, 1)
 
+        pdf.set_font('times', 'B', 10)
+        pdf.cell(40, 8, "Modo de Resolucao:", 0)
+        pdf.set_font('times', '', 10)
+        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Nao definido"), 0, 1)
+
         pdf.ln(5)
+
+        # --- Imagens Anexadas ---
+        imagens = [a for a in i.anexos if a.tipo and a.tipo.startswith("image")]
+        if imagens:
+            draw_section_header(pdf, "IMAGENS ANEXADAS")
+
+            BOX_W, BOX_H = 85, 60      # caixa de cada imagem (mm)
+            COLS = [12, 108]           # x da coluna esquerda e direita
+            col = 0
+            y = pdf.get_y() + 4
+
+            for anexo in imagens:
+                try:
+                    r = requests.get(anexo.url, timeout=10)
+                    if r.status_code != 200:
+                        continue
+                    ext = ".png" if "png" in anexo.url.lower() else ".jpg"
+                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+                    tmp.write(r.content)
+                    tmp.close()
+
+                    # nova página se não couber
+                    if y + BOX_H > 265:
+                        pdf.add_page()
+                        y = pdf.get_y()
+                        col = 0
+
+                    pdf.image(tmp.name, x=COLS[col], y=y,
+                              w=BOX_W, h=BOX_H, keep_aspect_ratio=True)
+                    os.unlink(tmp.name)
+
+                    col += 1
+                    if col > 1:            # completou a linha
+                        col = 0
+                        y += BOX_H + 5
+                except Exception as e:
+                    print(f"Erro ao inserir imagem no PDF: {e}")
+
+            if col == 1:                   # sobrou uma imagem na linha
+                y += BOX_H + 5
+            pdf.set_y(y + 3)
+            pdf.ln(2)
 
         # --- Descricao do Problema ---
         draw_section_header(pdf, "DESCRICAO DO PROBLEMA")
@@ -274,13 +331,7 @@ def gerar_pdf_intervencao(
         pdf.multi_cell(190, 6, "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5", 0, 'C')
         pdf.ln(5)
 
-        # --- Rodape ---
-        pdf.set_y(-35)
-        pdf.set_font('times', '', 7)
-        pdf.set_text_color(128, 128, 128)
-        pdf.cell(0, 4, "Endereco: Municipio de Luanda, Bairro: Cassenda, Rua: casa s/N", 0, 1, 'C')
-        pdf.cell(0, 4, "NF: 541733079", 0, 1, 'C')
-        pdf.cell(0, 4, "Tel. 92 505 439 / 918 94 78", 0, 1, 'C')
+    
 
         pdf_bytes = pdf.output()
         pdf_stream = io.BytesIO(pdf_bytes)
@@ -296,6 +347,7 @@ def gerar_pdf_intervencao(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Erro interno ao gerar PDF: {str(e)}")
+
     
 @router.get("/intervencao/{id}/download")
 def download_pdf_intervencao(
@@ -315,10 +367,14 @@ def download_pdf_intervencao(
             raise HTTPException(status_code=404, detail="Intervencao nao encontrada")
 
         pdf = PDF()
+        pdf.set_auto_page_break(auto=True, margin=35)
         pdf.alias_nb_pages()
         pdf.add_page()
 
         def draw_section_header(pdf, title):
+             # se não couber o cabeçalho + pelo menos uma linha, salta de página
+            if pdf.get_y() + 20 > pdf.h - 35:
+                pdf.add_page()
             pdf.set_fill_color(200, 225, 255)
             curr_y = pdf.get_y()
             pdf.rect(10, curr_y, 190, 10, 'F')
@@ -385,7 +441,53 @@ def download_pdf_intervencao(
         pdf.set_font('times', '', 10)
         pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Nao atribuido"), 0, 1)
 
+        pdf.set_font('times', 'B', 10)
+        pdf.cell(40, 8, "Modo de Resolucao:", 0)
+        pdf.set_font('times', '', 10)
+        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Nao definido"), 0, 1)
+
         pdf.ln(5)
+
+        # --- Imagens Anexadas ---
+        imagens = [a for a in i.anexos if a.tipo and a.tipo.startswith("image")]
+        if imagens:
+            draw_section_header(pdf, "IMAGENS ANEXADAS")
+
+            BOX_W, BOX_H = 85, 60
+            COLS = [12, 108]
+            col = 0
+            y = pdf.get_y() + 4
+
+            for anexo in imagens:
+                try:
+                    r = requests.get(anexo.url, timeout=10)
+                    if r.status_code != 200:
+                        continue
+                    ext = ".png" if "png" in anexo.url.lower() else ".jpg"
+                    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+                    tmp.write(r.content)
+                    tmp.close()
+
+                    if y + BOX_H > 265:
+                        pdf.add_page()
+                        y = pdf.get_y()
+                        col = 0
+
+                    pdf.image(tmp.name, x=COLS[col], y=y,
+                              w=BOX_W, h=BOX_H, keep_aspect_ratio=True)
+                    os.unlink(tmp.name)
+
+                    col += 1
+                    if col > 1:
+                        col = 0
+                        y += BOX_H + 5
+                except Exception as e:
+                    print(f"Erro ao inserir imagem no PDF: {e}")
+
+            if col == 1:
+                y += BOX_H + 5
+            pdf.set_y(y + 3)
+            pdf.ln(2)
 
         # --- Descricao do Problema ---
         draw_section_header(pdf, "DESCRICAO DO PROBLEMA")
@@ -545,25 +647,6 @@ def download_pdf_intervencao(
 
         pdf.ln(5)
 
-        # --- Rodape ---
-        pdf.set_y(-35)
-
-        pdf.set_font('times', '', 7)
-
-        pdf.set_text_color(128, 128, 128)
-
-        pdf.cell(
-            0,
-            4,
-            "Endereco: Municipio de Luanda, Bairro: Cassenda, Rua: casa s/N",
-            0,
-            1,
-            'C'
-        )
-
-        pdf.cell(0, 4, "NF: 541733079", 0, 1, 'C')
-
-        pdf.cell(0, 4, "Tel. 92 505 439 / 918 94 78", 0, 1, 'C')
 
         pdf_bytes = bytes(pdf.output(dest='S'))
 

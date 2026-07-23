@@ -15,6 +15,10 @@ def serialize_intervencao(i: models.Intervencao) -> dict:
     ultimo_registo = sorted(i.registros_horas, key=lambda r: r.data_criacao, reverse=True)[0] if i.registros_horas else None
     i_dict['horaInicio'] = ultimo_registo.hora_inicio if ultimo_registo else None
     i_dict['horaFim'] = ultimo_registo.hora_fim if ultimo_registo else None
+    i_dict['anexos'] = [
+        {"id": a.id, "url": a.url, "nome": a.nome, "tipo": a.tipo}
+        for a in i.anexos
+    ]
     return i_dict
 
 
@@ -76,6 +80,18 @@ def create_intervencao(intervencao: schemas.IntervencaoCreate, db: Session = Dep
     db.add(db_intervencao)
     db.commit()
     db.refresh(db_intervencao)
+
+    # Guardar anexos (URLs do Cloudinary)
+    if intervencao.anexos:
+        for a in intervencao.anexos:
+            if a.get("url"):
+                db.add(models.Anexo(
+                    intervencao_id=db_intervencao.id,
+                    url=a.get("url"),
+                    nome=a.get("nome"),
+                    tipo=a.get("tipo")
+                ))
+        db.commit()
 
     # Notificar todos os admins de que há uma nova intervenção
     admins = db.query(models.Usuario).filter(models.Usuario.perfil == "admin").all()
