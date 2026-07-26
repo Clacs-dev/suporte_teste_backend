@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, Response
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import database, models
@@ -8,6 +8,17 @@ import io
 import unicodedata
 from datetime import datetime
 
+def _data_do_registo(r):
+    from datetime import datetime
+    val = r.data
+    if not val:
+        return None
+    if isinstance(val, str):
+        try:
+            return datetime.strptime(val[:10], "%Y-%m-%d")
+        except Exception:
+            return None
+    return val
 router = APIRouter(tags=["relatorios"])
 
 
@@ -28,15 +39,7 @@ class PDF(FPDF):
             self.ln(10)
 
     def footer(self):
-        self.set_y(-35)
-        self.set_font('times', '', 7)
-        self.set_text_color(128, 128, 128)
-        self.cell(0, 4, "Endereco: Municipio de Luanda, Bairro: Cassenda, Rua: casa s/N", 0, 1, 'C')
-        self.cell(0, 4, "NF: 541733079", 0, 1, 'C')
-        self.cell(0, 4, "Tel. 92 505 439 / 918 94 78", 0, 1, 'C')
-        self.set_text_color(0, 0, 0)
-        self.set_font('times', 'I', 8)
-        self.cell(0, 4, f'Pagina {self.page_no()} de {{nb}}', 0, 0, 'C')
+        pass
 
 
 def format_date_str(date_val, fallback="N/A"):
@@ -115,162 +118,155 @@ def draw_progress_bar(pdf: PDF, percent: float):
 
 
 # ─── Endpoint ────────────────────────────────────────────────────────────────
+MESES_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
 @router.get("/contrato/{contrato_id}/cliente")
-def gerar_relatorio_mensal_cliente(contrato_id: str, db: Session = Depends(database.get_db)):
+def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int = None,
+                                   db: Session = Depends(database.get_db)):
+    from datetime import datetime
+    hoje = datetime.now()
+    mes = mes or hoje.month
+    ano = ano or hoje.year
+
     contrato = db.query(models.Contrato).filter(models.Contrato.id == contrato_id).first()
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato nao encontrado")
 
-    # intervenções ligadas ao cliente deste contrato
-    intervencoes = (
-        db.query(models.Intervencao)
+    cliente = contrato.cliente
+    empresa_nome = (cliente.empresa or cliente.nome) if cliente else "Cliente"
+
+    # Registos de horas do mês, do cliente deste contrato
+    registros = (
+        db.query(models.RegistroHoras)
+        .join(models.Intervencao)
         .filter(models.Intervencao.cliente_id == contrato.cliente_id)
-        .order_by(models.Intervencao.data_criacao)
         .all()
     )
+    registros = [r for r in registros if _data_do_registo(r) and
+                 _data_do_registo(r).month == mes and _data_do_registo(r).year == ano]
+    registros.sort(key=lambda r: _data_do_registo(r))
+
+    total_min = sum(int(round(float(r.horas or 0) * 60)) for r in registros)
+    horas_tot, min_tot = divmod(total_min, 60)
+    n_interv = len(registros)
 
     pdf = PDF()
+    pdf.set_auto_page_break(auto=True, margin=25)
+    pdf.set_margins(left=20, top=15, right=20)
     pdf.alias_nb_pages()
     pdf.add_page()
 
-    # ── SECÇÃO: CONTRATO ─────────────────────────────────────────────────────
-    draw_section_header(pdf, "CONTRATO")
-
-    horas_contratadas = float(contrato.horas_contratadas or 0)
-
-    # Calcular horas_usadas dinamicamente (igual ao endpoint /contratos)
-    horas_usadas = db.query(func.sum(models.RegistroHoras.horas)).\
-        select_from(models.RegistroHoras).\
-        join(models.Intervencao).\
-        filter(
-            (models.Intervencao.contrato_id == contrato.id) |
-            ((models.Intervencao.contrato_id == None) & (models.Intervencao.cliente_id == contrato.cliente_id))
-        ).\
-        scalar() or 0.0
-    horas_usadas = float(horas_usadas)
-
-    horas_restantes   = horas_contratadas - horas_usadas
-    percent           = (horas_usadas / horas_contratadas * 100) if horas_contratadas > 0 else 0
-    valor_mensal      = float(contrato.valor_mensal or 0)
-
-    def row(pdf, label, value):
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(60, 8, clean_text(label), 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(value), 0, 1)
-
-    row(pdf, "Tipo:",           contrato.tipo or "N/A")
-    row(pdf, "Status:",         contrato.status or "N/A")
-    row(pdf, "Data de Inicio:", format_date_str(contrato.data_inicio, "N/A"))
-    row(pdf, "Data de Fim:",    format_date_str(contrato.data_fim, "Indeterminado"))
-    row(pdf, "Valor Mensal:",   f"Kz {valor_mensal:,.2f}")
-    row(pdf, "Horas Contratadas:", f"{horas_contratadas:.2f}h")
-    row(pdf, "Horas Usadas:",      f"{horas_usadas:.2f}h")
-    row(pdf, "Horas Disponiveis:", f"{horas_restantes:.2f}h")
-
-    pdf.ln(3)
-    pdf.set_font('times', 'B', 10)
-    pdf.cell(0, 6, "Progresso do Contrato:", 0, 1)
-    pdf.ln(1)
-    draw_progress_bar(pdf, percent)
-
+    # Título
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 10, clean_text(f"Relatorio Mensal - {empresa_nome}"), 0, 1, 'L')
     pdf.ln(4)
 
-    # ── SECÇÃO: INTERVENÇÕES ─────────────────────────────────────────────────
-    draw_section_header(pdf, "INTERVENCOES")
+    # Introdução
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 8, "Introducao", 0, 1, 'C')
+    pdf.set_font('times', '', 12)
+    intro = (f"Dentro das obrigacoes da Clacs Tecnologia no suporte e assistencia tecnica "
+             f"fornecida a {empresa_nome}, foram executadas durante o mes de {MESES_PT[mes]} "
+             f"inumeras intervencoes a nivel de correcao e prevencao, tal como consultoria, "
+             f"suporte e acompanhamento aos usuarios dentro das ocorrencias.")
+    pdf.multi_cell(0, 7, clean_text(intro))
+    pdf.ln(4)
 
-    if not intervencoes:
-        pdf.set_font('times', 'I', 10)
-        pdf.cell(0, 8, "Nenhuma intervencao registrada.", 0, 1)
-    else:
-        for idx, i in enumerate(intervencoes, start=1):
-            # garante espaço suficiente para pelo menos o cabeçalho do item
-            if pdf.get_y() > 240:
-                pdf.add_page()
+# Números e horas
+    EXTENSO = ["zero","uma","duas","tres","quatro","cinco","seis","sete","oito","nove","dez",
+               "onze","doze","treze","catorze","quinze","dezasseis","dezassete","dezoito","dezanove","vinte"]
 
-            # cabeçalho do item (fundo azul claro)
-            pdf.set_fill_color(200, 220, 255)
-            pdf.set_text_color(0, 0, 0)
-            item_y = pdf.get_y()
-            pdf.rect(10, item_y, 190, 9, 'F')
-            pdf.set_font('times', 'B', 10)
-            pdf.set_x(12)
-            num = clean_text(i.numero or f"#{idx}")
-            titulo = clean_text(i.titulo or "Sem titulo")
-            pdf.cell(0, 9, f"{num}  |  {titulo}", 0, 1)
-            pdf.ln(1)
+    presenciais = [r for r in registros if r.intervencao and r.intervencao.modo_resolucao != "Remoto"]
+    remotas     = [r for r in registros if r.intervencao and r.intervencao.modo_resolucao == "Remoto"]
 
-            # campos
-            def irow(label, value):
-                pdf.set_font('times', 'B', 9)
-                pdf.cell(55, 7, clean_text(label), 0)
-                pdf.set_font('times', '', 9)
-                pdf.cell(0, 7, clean_text(value), 0, 1)
+    n_pres = len(presenciais)
+    n_rem  = len(remotas)
 
-            irow("Status:",     i.status or "N/A")
-            irow("Prioridade:", i.prioridade or "N/A")
-            irow("Data:",       format_date_str(i.data_criacao, "N/A"))
+    min_pres = sum(int(round(float(r.horas or 0) * 60)) for r in presenciais)
+    h_pres, m_pres = divmod(min_pres, 60)
+    min_rem = sum(int(round(float(r.horas or 0) * 60)) for r in remotas)
+    h_rem, m_rem = divmod(min_rem, 60)
+    pres_ext = EXTENSO[n_pres] if n_pres < len(EXTENSO) else str(n_pres)
+    palavra_int = "intervencao presencial" if n_pres == 1 else "intervencoes presenciais"
+    frase_remota = f" e ({n_rem}) remotamente" if n_rem > 0 else ""
+    pdf.set_x(pdf.l_margin)
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 8, "Numeros e horas de intervencao efectuadas", 0, 1, 'C')
+    pdf.set_x(pdf.l_margin)
+    pdf.set_font('times', '', 12)
+    resumo = (f"Foram realizados um total de {pres_ext} ({n_pres}) {palavra_int}"
+              f"{frase_remota} ao longo do mes, tendo contabilizado {h_pres} horas e {m_pres} minutos "
+              f"de assistencias presenciais e {h_rem} horas e {m_rem} minutos de assistencias remotas.")
+    pdf.multi_cell(0, 7, clean_text(resumo), align='J', new_x="LMARGIN", new_y="NEXT")
+    pdf.ln(4)
 
-            # hora início / fim (primeiro e último registo)
-            hora_inicio = "N/A"
-            hora_fim    = "N/A"
-            if i.registros_horas:
-                primeiro = i.registros_horas[0]
-                ultimo   = i.registros_horas[-1]
-                hora_inicio = primeiro.hora_inicio if primeiro.hora_inicio else "N/A"
-                hora_fim    = ultimo.hora_fim if ultimo.hora_fim else "N/A"
+    # Principais intervenções
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 8, "Principais Intervencoes realizadas", 0, 1, 'C')
+    pdf.ln(2)
 
-            irow("Hora de Inicio:", hora_inicio)
-            irow("Hora de Fim:",    hora_fim)
-            irow("Horas Gastas:",   f"{float(i.horas_gastas or 0):.2f}h")
+    for r in registros:
+        d = _data_do_registo(r)
+        hi = r.hora_inicio or "--:--"
+        hf = r.hora_fim or "--:--"
+        tecnico_nome = r.tecnico.nome if r.tecnico else "N/A"
+        pdf.set_x(pdf.l_margin)
+        pdf.set_font('times', 'B', 12)
+        pdf.set_font('times', 'B', 12)
+        parte1 = "Tempo de trabalho: "
+        pdf.set_font('times', '', 12)
+        parte2 = clean_text(f"{hi} as {hf}   ")
+        pdf.set_font('times', 'B', 12)
+        parte3 = "Consultor: "
+        pdf.set_font('times', '', 12)
+        parte4 = clean_text(f"{tecnico_nome}   ")
+        pdf.set_font('times', 'B', 12)
+        parte5 = "Dia "
+        pdf.set_font('times', 'I', 12)
+        parte6 = clean_text(f"{d.day:02d} de {MESES_PT[d.month]} de {d.year}:")
 
-            pdf.ln(2)
+        partes = [(parte1, 'B'), (parte2, ''), (parte3, 'B'), (parte4, ''), (parte5, 'B'), (parte6, 'I')]
+        total_w = 0
+        for txt, estilo in partes:
+            pdf.set_font('times', estilo, 12)
+            total_w += pdf.get_string_width(txt)
 
-            # descrição do problema
-            pdf.set_font('times', 'B', 9)
-            pdf.cell(0, 7, "Descricao do Problema:", 0, 1)
-            pdf.set_font('times', '', 9)
-            pdf.set_xy(10, pdf.get_y())
-            pdf.multi_cell(190, 6, clean_text(i.descricao or "Sem descricao."))
-            pdf.ln(1)
+        pdf.set_xy((pdf.w - total_w) / 2, pdf.get_y())
+        for txt, estilo in partes:
+            pdf.set_font('times', estilo, 12)
+            pdf.write(7, txt)
+        pdf.ln(10)
+        pdf.set_x(pdf.l_margin)
+        pdf.set_font('times', '', 12)
+        pdf.multi_cell(0, 7, clean_text(r.descricao or "Sem descricao."), new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(3)
 
-           # descrição da solução (registros de horas)
-            pdf.set_font('times', 'B', 9)
-            pdf.cell(0, 7, "Descricao da Solucao:", 0, 1)
-            pdf.set_font('times', '', 9)
-            if i.registros_horas:
-              for reg in i.registros_horas:
-               desc = clean_text(reg.descricao or "Sem descricao da solucao.")
-               tec  = clean_text(reg.tecnico.nome if reg.tecnico else "N/A")
-               pdf.set_xy(10, pdf.get_y())
-               pdf.multi_cell(190, 6, f"[{tec}] {desc}")
-            else:
-                 pdf.set_xy(10, pdf.get_y())
-                 pdf.multi_cell(190, 6, "Nenhuma solucao registrada.")
+    # Solicitações e Pendentes
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 8, "Solicitacoes e Pendentes", 0, 1, 'L')
+    pdf.set_font('times', '', 12)
+    pdf.cell(0, 7, "- Nenhum.", 0, 1, 'L')
+    pdf.ln(6)
 
-            # separador entre intervenções
-            pdf.ln(2)
-            pdf.set_draw_color(180, 180, 180)
-            pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-            pdf.set_draw_color(0, 0, 0)
-            pdf.ln(4)
+    # Local e data
+    pdf.set_font('times', '', 12)
+    pdf.cell(0, 7, clean_text(f"Luanda, aos {hoje.day:02d} de {MESES_PT[mes]} de {ano}"), 0, 1, 'C')
+    pdf.ln(8)
 
-    # ── OUTPUT ───────────────────────────────────────────────────────────────
-    pdf_output = pdf.output(dest='S')
+    # Validado por
+    pdf.set_font('times', 'B', 12)
+    pdf.cell(0, 7, "Validado por:", 0, 1, 'L')
+    pdf.ln(2)
+    pdf.cell(0, 7, "Dinis Jombe", 0, 1, 'C')
+    pdf.ln(10)
+    pdf.cell(0, 7, "Director Geral", 0, 1, 'C')
 
-    if isinstance(pdf_output, str):
-       pdf_bytes = pdf_output.encode('latin-1')
-    else:
-       pdf_bytes = bytes(pdf_output)
+    import os
+    assinatura_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assinatura.png")
+    if os.path.exists(assinatura_path):
+        pdf.image(assinatura_path, x=(210 - 50) / 2, w=50)
 
-    pdf_stream = io.BytesIO(pdf_bytes)
-    
-    
-    cliente_nome = clean_text(contrato.cliente.nome if contrato.cliente else "cliente")
-    filename = f"relatorio_mensal_{cliente_nome.replace(' ', '_')}.pdf"
-
-    return StreamingResponse(
-        pdf_stream,
-        media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
-    )
+    pdf_bytes = bytes(pdf.output())
+    return Response(content=pdf_bytes, media_type="application/pdf",
+                    headers={"Content-Disposition": f'inline; filename="relatorio_{empresa_nome}_{mes}_{ano}.pdf"'})

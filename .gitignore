@@ -11,3 +11,4 @@ listar_usuarios.py
 reset_admin.py
 add_coluna.py
 ve.py
+lock.py
