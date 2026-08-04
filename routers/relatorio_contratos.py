@@ -126,12 +126,12 @@ MESES_PT = ["", "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
 @router.get("/contrato/{contrato_id}/cliente")
-def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int = None,
+def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, data_fim: str = None,
                                    db: Session = Depends(database.get_db)):
     from datetime import datetime
     hoje = datetime.now()
-    mes = mes or hoje.month
-    ano = ano or hoje.year
+    di = datetime.strptime(data_inicio, "%Y-%m-%d") if data_inicio else None
+    df = datetime.strptime(data_fim, "%Y-%m-%d") if data_fim else None
 
     contrato = db.query(models.Contrato).filter(models.Contrato.id == contrato_id).first()
     if not contrato:
@@ -147,8 +147,17 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
         .filter(models.Intervencao.cliente_id == contrato.cliente_id)
         .all()
     )
-    registros = [r for r in registros if _data_do_registo(r) and
-                 _data_do_registo(r).month == mes and _data_do_registo(r).year == ano]
+    def _no_intervalo(r):
+        d = _data_do_registo(r)
+        if not d:
+            return False
+        if di and d < di:
+            return False
+        if df and d > df:
+            return False
+        return True
+    registros = [r for r in registros if _no_intervalo(r)]
+
     registros.sort(key=lambda r: _data_do_registo(r))
 
     # Intervenções pendentes do mês (não resolvidas nem concluídas)
@@ -183,12 +192,16 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
     pdf.cell(0, 10, texto(f"Relatório Mensal - {empresa_nome}"), 0, 1, 'L')
     pdf.ln(4)
 
+    def _fmt(d):
+        return d.strftime("%d/%m/%Y") if d else "..."
+    periodo_txt = f"o período de {_fmt(di)} a {_fmt(df)}" if (di or df) else "o período abrangido"
+
     # Introdução
     pdf.set_font('Times', 'B', 12)
     pdf.cell(0, 8, "Introdução", 0, 1, 'C')
     pdf.set_font('Times', '', 12)
     intro = (f"Dentro das obrigações da Clacs Tecnologia no suporte e assistência técnica "
-             f"fornecida a {empresa_nome}, foram executadas durante o mês de {MESES_PT[mes]} "
+             f"fornecida a {empresa_nome}, foram executadas durante {periodo_txt} "
              f"inúmeras intervenções a nível de correção e prevenção, tal como consultoria, "
              f"suporte e acompanhamento aos usuários dentro das ocorrências.")
     pdf.multi_cell(0, 7, texto(intro))
@@ -285,7 +298,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
 
     # Local e data
     pdf.set_font('Times', '', 12)
-    pdf.cell(0, 7, texto(f"Luanda, aos {hoje.day:02d} de {MESES_PT[mes]} de {ano}"), 0, 1, 'C')
+    pdf.cell(0, 7, texto(f"Luanda, aos {hoje.day:02d} de {MESES_PT[hoje.month]} de {hoje.year}"), 0, 1, 'C')
     pdf.ln(8)
 
     # Validado por
@@ -303,4 +316,4 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
 
     pdf_bytes = bytes(pdf.output())
     return Response(content=pdf_bytes, media_type="application/pdf",
-                    headers={"Content-Disposition": f'inline; filename="relatorio_{empresa_nome}_{mes}_{ano}.pdf"'})
+                    headers={"Content-Disposition": f'inline; filename="relatorio_{empresa_nome}.pdf"'})
