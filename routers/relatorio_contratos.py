@@ -10,7 +10,19 @@ from datetime import datetime
 
 
 def texto(t):
-    return str(t) if t is not None else ""
+    if t is None:
+        return ""
+    t = str(t)
+    subs = {
+        "\u2013": "-", "\u2014": "-", "\u2012": "-", "\u2015": "-", "\u2011": "-",
+        "\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'",
+        "\u201c": '"', "\u201d": '"', "\u201e": '"',
+        "\u2026": "...", "\u2022": "-", "\u00b7": ".",
+        "\u00ab": '"', "\u00bb": '"', "\u00a0": " ",
+    }
+    for k, v in subs.items():
+        t = t.replace(k, v)
+    return t
 
 def _data_do_registo(r):
     from datetime import datetime
