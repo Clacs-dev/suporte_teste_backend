@@ -8,6 +8,10 @@ import io
 import unicodedata
 from datetime import datetime
 
+
+def texto(t):
+    return str(t) if t is not None else ""
+
 def _data_do_registo(r):
     from datetime import datetime
     val = r.data
@@ -33,7 +37,7 @@ class PDF(FPDF):
             self.set_font('times', 'B', 18)
             self.cell(0, 10, 'CLACS - SISTEMA DE SUPORTE', 0, 1, 'C')
             self.set_font('times', 'I', 12)
-            self.cell(0, 7, 'Relatorio Mensal do Cliente', 0, 1, 'C')
+            self.cell(0, 7, 'Relatório Mensal do Cliente', 0, 1, 'C')
             self.set_draw_color(0, 0, 0)
             self.line(10, 35, 200, 35)
             self.ln(10)
@@ -42,7 +46,7 @@ class PDF(FPDF):
         pass
 
 
-def format_date_str(date_val, fallback="N/A"):
+def format_date_str(date_val, fallback="Não definido"):
     """Formata datas de forma segura, quer sejam string ou datetime."""
     if not date_val:
         return fallback
@@ -147,6 +151,17 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
                  _data_do_registo(r).month == mes and _data_do_registo(r).year == ano]
     registros.sort(key=lambda r: _data_do_registo(r))
 
+    # Intervenções pendentes do mês (não resolvidas nem concluídas)
+    intervencoes_cliente = (
+        db.query(models.Intervencao)
+        .filter(models.Intervencao.cliente_id == contrato.cliente_id)
+        .all()
+    )
+    pendentes = [
+        i for i in intervencoes_cliente
+        if i.status not in ("Resolvido", "Concluído")
+    ]
+
     total_min = sum(int(round(float(r.horas or 0) * 60)) for r in registros)
     horas_tot, min_tot = divmod(total_min, 60)
     n_interv = len(registros)
@@ -157,20 +172,26 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
     pdf.alias_nb_pages()
     pdf.add_page()
 
+    import os
+    _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+    pdf.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
+    pdf.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
+    pdf.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))
+
     # Título
-    pdf.set_font('times', 'B', 12)
-    pdf.cell(0, 10, clean_text(f"Relatorio Mensal - {empresa_nome}"), 0, 1, 'L')
+    pdf.set_font('Times', 'B', 12)
+    pdf.cell(0, 10, texto(f"Relatório Mensal - {empresa_nome}"), 0, 1, 'L')
     pdf.ln(4)
 
     # Introdução
-    pdf.set_font('times', 'B', 12)
-    pdf.cell(0, 8, "Introducao", 0, 1, 'C')
-    pdf.set_font('times', '', 12)
-    intro = (f"Dentro das obrigacoes da Clacs Tecnologia no suporte e assistencia tecnica "
-             f"fornecida a {empresa_nome}, foram executadas durante o mes de {MESES_PT[mes]} "
-             f"inumeras intervencoes a nivel de correcao e prevencao, tal como consultoria, "
-             f"suporte e acompanhamento aos usuarios dentro das ocorrencias.")
-    pdf.multi_cell(0, 7, clean_text(intro))
+    pdf.set_font('Times', 'B', 12)
+    pdf.cell(0, 8, "Introdução", 0, 1, 'C')
+    pdf.set_font('Times', '', 12)
+    intro = (f"Dentro das obrigações da Clacs Tecnologia no suporte e assistência técnica "
+             f"fornecida a {empresa_nome}, foram executadas durante o mês de {MESES_PT[mes]} "
+             f"inúmeras intervenções a nível de correção e prevenção, tal como consultoria, "
+             f"suporte e acompanhamento aos usuários dentro das ocorrências.")
+    pdf.multi_cell(0, 7, texto(intro))
     pdf.ln(4)
 
 # Números e horas
@@ -188,74 +209,87 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, mes: int = None, ano: int =
     min_rem = sum(int(round(float(r.horas or 0) * 60)) for r in remotas)
     h_rem, m_rem = divmod(min_rem, 60)
     pres_ext = EXTENSO[n_pres] if n_pres < len(EXTENSO) else str(n_pres)
-    palavra_int = "intervencao presencial" if n_pres == 1 else "intervencoes presenciais"
+    palavra_int = "intervenção presencial" if n_pres == 1 else "intervenções presenciais"
     frase_remota = f" e ({n_rem}) remotamente" if n_rem > 0 else ""
     pdf.set_x(pdf.l_margin)
-    pdf.set_font('times', 'B', 12)
-    pdf.cell(0, 8, "Numeros e horas de intervencao efectuadas", 0, 1, 'C')
+    pdf.set_font('Times', 'B', 12)
+    pdf.cell(0, 8, "Números e horas de intervenção efectuadas", 0, 1, 'C')
     pdf.set_x(pdf.l_margin)
-    pdf.set_font('times', '', 12)
+    pdf.set_font('Times', '', 12)
     resumo = (f"Foram realizados um total de {pres_ext} ({n_pres}) {palavra_int}"
-              f"{frase_remota} ao longo do mes, tendo contabilizado {h_pres} horas e {m_pres} minutos "
-              f"de assistencias presenciais e {h_rem} horas e {m_rem} minutos de assistencias remotas.")
-    pdf.multi_cell(0, 7, clean_text(resumo), align='J', new_x="LMARGIN", new_y="NEXT")
+              f"{frase_remota} ao longo do mês, tendo contabilizado {h_pres} horas e {m_pres} minutos "
+              f"de assistências presenciais e {h_rem} horas e {m_rem} minutos de assistências remotas.")
+    pdf.multi_cell(0, 7, texto(resumo), align='J', new_x="LMARGIN", new_y="NEXT")
     pdf.ln(4)
 
     # Principais intervenções
-    pdf.set_font('times', 'B', 12)
-    pdf.cell(0, 8, "Principais Intervencoes realizadas", 0, 1, 'C')
+    pdf.set_font('Times', 'B', 12)
+    pdf.cell(0, 8, "Principais Intervenções realizadas", 0, 1, 'C')
     pdf.ln(2)
 
     for r in registros:
         d = _data_do_registo(r)
         hi = r.hora_inicio or "--:--"
         hf = r.hora_fim or "--:--"
-        tecnico_nome = r.tecnico.nome if r.tecnico else "N/A"
+        tecnico_nome = r.tecnico.nome if r.tecnico else "Não definido"
         pdf.set_x(pdf.l_margin)
-        pdf.set_font('times', 'B', 12)
-        pdf.set_font('times', 'B', 12)
+        pdf.set_font('Times', 'B', 12)
+        pdf.set_font('Times', 'B', 12)
         parte1 = "Tempo de trabalho: "
-        pdf.set_font('times', '', 12)
-        parte2 = clean_text(f"{hi} as {hf}   ")
-        pdf.set_font('times', 'B', 12)
+        pdf.set_font('Times', '', 12)
+        parte2 = texto(f"{hi} as {hf}   ")
+        pdf.set_font('Times', 'B', 12)
         parte3 = "Consultor: "
-        pdf.set_font('times', '', 12)
-        parte4 = clean_text(f"{tecnico_nome}   ")
-        pdf.set_font('times', 'B', 12)
+        pdf.set_font('Times', '', 12)
+        parte4 = texto(f"{tecnico_nome}   ")
+        pdf.set_font('Times', 'B', 12)
         parte5 = "Dia "
-        pdf.set_font('times', 'I', 12)
-        parte6 = clean_text(f"{d.day:02d} de {MESES_PT[d.month]} de {d.year}:")
+        pdf.set_font('Times', 'I', 12)
+        parte6 = texto(f"{d.day:02d} de {MESES_PT[d.month]} de {d.year}:")
 
-        partes = [(parte1, 'B'), (parte2, ''), (parte3, 'B'), (parte4, ''), (parte5, 'B'), (parte6, 'I')]
+        solic = r.intervencao.solicitante if r.intervencao else None
+        partes = [(parte1, 'B'), (parte2, ''), (parte3, 'B'), (parte4, '')]
+        if solic:
+            partes.append(("Solicitante: ", 'B'))
+            partes.append((texto(f"{solic}   "), ''))
+        partes.append((parte5, 'B'))
+        partes.append((parte6, 'I'))
         total_w = 0
         for txt, estilo in partes:
-            pdf.set_font('times', estilo, 12)
+            pdf.set_font('Times', estilo, 12)
             total_w += pdf.get_string_width(txt)
 
         pdf.set_xy((pdf.w - total_w) / 2, pdf.get_y())
         for txt, estilo in partes:
-            pdf.set_font('times', estilo, 12)
+            pdf.set_font('Times', estilo, 12)
             pdf.write(7, txt)
         pdf.ln(10)
         pdf.set_x(pdf.l_margin)
-        pdf.set_font('times', '', 12)
-        pdf.multi_cell(0, 7, clean_text(r.descricao or "Sem descricao."), new_x="LMARGIN", new_y="NEXT")
+        pdf.set_font('Times', '', 12)
+        pdf.multi_cell(0, 7, texto(r.descricao or "Sem descricão."), new_x="LMARGIN", new_y="NEXT")
         pdf.ln(3)
 
     # Solicitações e Pendentes
-    pdf.set_font('times', 'B', 12)
-    pdf.cell(0, 8, "Solicitacoes e Pendentes", 0, 1, 'L')
-    pdf.set_font('times', '', 12)
-    pdf.cell(0, 7, "- Nenhum.", 0, 1, 'L')
+    pdf.set_x(pdf.l_margin)
+    pdf.set_font('Times', 'B', 12)
+    pdf.cell(0, 8, texto("Solicitações e Pendentes"), 0, 1, 'L')
+    pdf.set_x(pdf.l_margin)
+    pdf.set_font('Times', '', 12)
+    if pendentes:
+        for i in pendentes:
+            pdf.set_x(pdf.l_margin)
+            pdf.multi_cell(0, 7, texto(f'- Intervenção "{i.titulo}" por fechar'), new_x="LMARGIN", new_y="NEXT")
+    else:
+        pdf.cell(0, 7, "- Nenhum.", 0, 1, 'L')
     pdf.ln(6)
 
     # Local e data
-    pdf.set_font('times', '', 12)
-    pdf.cell(0, 7, clean_text(f"Luanda, aos {hoje.day:02d} de {MESES_PT[mes]} de {ano}"), 0, 1, 'C')
+    pdf.set_font('Times', '', 12)
+    pdf.cell(0, 7, texto(f"Luanda, aos {hoje.day:02d} de {MESES_PT[mes]} de {ano}"), 0, 1, 'C')
     pdf.ln(8)
 
     # Validado por
-    pdf.set_font('times', 'B', 12)
+    pdf.set_font('Times', 'B', 12)
     pdf.cell(0, 7, "Validado por:", 0, 1, 'L')
     pdf.ln(2)
     pdf.cell(0, 7, "Dinis Jombe", 0, 1, 'C')

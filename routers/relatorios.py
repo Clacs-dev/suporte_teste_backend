@@ -52,42 +52,29 @@ class PDF(FPDF):
                 self.image('LogoCLACS.png', 10, 8, 45)
             except:
                 pass
-            self.set_font('times', 'B', 18)
+            self.set_font('Times', 'B', 18)
             self.cell(0, 10, 'CLACS - SISTEMA DE SUPORTE', 0, 1, 'C')
-            self.set_font('times', 'I', 12)
-            self.cell(0, 7, 'Relatorio de Suporte Tecnico', 0, 1, 'C')
+            self.set_font('Times', 'I', 12)
+            self.cell(0, 7, 'Relatório de Suporte Técnico', 0, 1, 'C')
             self.set_draw_color(0, 0, 0)
             self.line(10, 35, 200, 35)
             self.ln(10)
 
     def footer(self):
         self.set_y(-25)
-        self.set_font('times', '', 7)
+        self.set_font('Times', '', 7)
         self.set_text_color(128, 128, 128)
         self.cell(0, 4, "Endereco: Municipio de Luanda, Bairro: Cassenda, Rua: casa s/N", 0, 1, 'C')
         self.cell(0, 4, "NF: 541733079", 0, 1, 'C')
         self.cell(0, 4, "Tel. 92 505 439 / 918 94 78", 0, 1, 'C')
-        self.set_font('times', 'I', 8)
+        self.set_font('Times', 'I', 8)
         self.cell(0, 6, f'Pagina {self.page_no()} de {{nb}}', 0, 0, 'C')
 
 
 def clean_text(text):
-    if not text:
+    if text is None:
         return ""
-    special = {
-        '\u2014': '-', '\u2013': '-', '\u2012': '-', '\u2015': '-',
-        '\u2011': '-', '\u201c': '"', '\u201d': '"', '\u2018': "'",
-        '\u2019': "'", '\u201e': '"', '\u00ab': '"', '\u00bb': '"',
-        '\u2026': '...', '\u2022': '-', '\u00b7': '.', '\u00a9': '(c)',
-        '\u00ae': '(R)', '\u2122': '(TM)', '\u00a0': ' ', '\u00b0': 'o',
-        '\u20ac': 'EUR', '\u00a3': 'GBP', '\u00d7': 'x', '\u00f7': '/',
-        '\u00ba': 'o', '\u00aa': 'a',
-    }
-    for char, replacement in special.items():
-        text = text.replace(char, replacement)
-    text = unicodedata.normalize('NFKD', text)
-    text = text.encode('latin-1', errors='ignore').decode('latin-1')
-    return text
+    return str(text)
 
 
 @router.get("/intervencao/{id}/visualizar")
@@ -111,6 +98,11 @@ def gerar_pdf_intervencao(
         pdf.set_auto_page_break(auto=True, margin=35)
         pdf.alias_nb_pages()
         pdf.add_page()
+
+        _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+        pdf.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
+        pdf.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
+        pdf.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))
         
         def draw_section_header(pdf, title):
              # se não couber o cabeçalho + pelo menos uma linha, salta de página
@@ -119,32 +111,32 @@ def gerar_pdf_intervencao(
             pdf.set_fill_color(200, 225, 255)
             curr_y = pdf.get_y()
             pdf.rect(10, curr_y, 190, 10, 'F')
-            pdf.set_font('times', 'B', 12)
+            pdf.set_font('Times', 'B', 10)
             pdf.cell(0, 10, clean_text(title), 0, 1, 'L')
             pdf.ln(2)
 
         # --- Dados da Intervencao ---
-        draw_section_header(pdf, f"DADOS DA INTERVENCAO: {i.numero if i.numero else 'N/A'}")
+        draw_section_header(pdf, f"DADOS DA INTERVENÇÃO: {i.numero if i.numero else 'N/A'}")
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Titulo:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.titulo)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Status:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.status)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Prioridade:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.prioridade)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Data de Abertura:", 0)
-        pdf.set_font('times', '', 10)
-        data_formatada = i.data_criacao.strftime("%d/%m/%Y %H:%M") if i.data_criacao else "N/A"
+        pdf.set_font('Times', '', 10)
+        data_formatada = i.data_criacao.strftime("%d/%m/%Y %H:%M") if i.data_criacao else "Não definido"
         pdf.cell(0, 8, data_formatada, 0, 1)
 
         pdf.ln(5)
@@ -152,40 +144,45 @@ def gerar_pdf_intervencao(
         # --- Cliente ---
         draw_section_header(pdf, "CLIENTE")
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Nome:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.nome if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.nome if i.cliente else "Não definido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Empresa:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.empresa if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.empresa if i.cliente else "Não definido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Email:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.email if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.email if i.cliente else "Não definido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Telefone:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.telefone if i.cliente and i.cliente.telefone else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.telefone if i.cliente and i.cliente.telefone else "Não definido"), 0, 1)
+
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Solicitante:", 0)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.solicitante or "Não definido"), 0, 1)
 
         pdf.ln(5)
 
         # --- Tecnico ---
-        draw_section_header(pdf, "TECNICO RESPONSAVEL")
+        draw_section_header(pdf, "TÉCNICO RESPONSÁVEL")
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Nome:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Nao atribuido"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Não atribuido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(40, 8, "Modo de Resolucao:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Nao definido"), 0, 1)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Modo de Resolução:", 0)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Não definido"), 0, 1)
 
         pdf.ln(5)
 
@@ -232,22 +229,22 @@ def gerar_pdf_intervencao(
             pdf.ln(2)
 
         # --- Descricao do Problema ---
-        draw_section_header(pdf, "DESCRICAO DO PROBLEMA")
-        pdf.set_font('times', '', 10)
+        draw_section_header(pdf, "DESCRIÇÃO DO PROBLEMA")
+        pdf.set_font('Times', '', 10)
         pdf.multi_cell(0, 8, clean_text(str(i.descricao) if i.descricao else "Sem descricao do problema disponivel."))
 
         pdf.ln(5)
 
         # --- Descricao da Solucao ---
-        draw_section_header(pdf, "DESCRICAO DA SOLUCAO")
-        pdf.set_font('times', '', 10)
+        draw_section_header(pdf, "DESCRIÇÃO DA SOLUÇÃO")
+        pdf.set_font('Times', '', 10)
 
         if not i.registros_horas:
-            pdf.multi_cell(0, 8, "Nenhuma tarefa registrada ate o momento.")
+            pdf.multi_cell(0, 8, "Nenhuma tarefa registrada até o momento.")
         else:
             for reg in i.registros_horas:
-                data_reg = reg.data if reg.data else "N/A"
-                nome_tec = clean_text(reg.tecnico.nome) if reg.tecnico else "N/A"
+                data_reg = reg.data if reg.data else "Não definido"
+                nome_tec = clean_text(reg.tecnico.nome) if reg.tecnico else "Não definido"
                 descricao = clean_text(reg.descricao) if reg.descricao else ""
                 texto_tarefa = f"- [{data_reg}] [{nome_tec}] {descricao}"
                 pdf.multi_cell(0, 7, texto_tarefa)
@@ -257,29 +254,29 @@ def gerar_pdf_intervencao(
         # --- Resumo de Tempo ---
         draw_section_header(pdf, "RESUMO DE TEMPO")
 
-        hora_inicio_str = "N/A"
-        hora_fim_str = "N/A"
+        hora_inicio_str = "Não definido"
+        hora_fim_str = "Não definido"
 
         if i.registros_horas:
           primeiro_reg = i.registros_horas[0]
           ultimo_reg = i.registros_horas[-1]
 
-          hora_inicio_str = primeiro_reg.hora_inicio if primeiro_reg.hora_inicio else "N/A"
-          hora_fim_str = ultimo_reg.hora_fim if ultimo_reg.hora_fim else "N/A"
+          hora_inicio_str = primeiro_reg.hora_inicio if primeiro_reg.hora_inicio else "Não definido"
+          hora_fim_str = ultimo_reg.hora_fim if ultimo_reg.hora_fim else "Não definido"
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(60, 10, "Hora de Inicio da intervencao:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(60, 10, "Hora de Início da intervenção:", 0)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 10, hora_inicio_str, 0, 1)
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(60, 10, "Hora de Termino da intervencao:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(60, 10, "Hora de Término da intervenção:", 0)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 10, hora_fim_str, 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(60, 10, "Total de Horas:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 10, f"{i.horas_gastas if i.horas_gastas else 0:.2f} horas", 0, 1)
 
         pdf.ln(5)
@@ -297,14 +294,14 @@ def gerar_pdf_intervencao(
 
         # Cabeçalho do bloco
         pdf.set_y(curr_y + 1)
-        pdf.set_font('times', 'B', 8)
-        pdf.cell(90, 4, 'ASSINATURA DO TECNICO', 0, 0, 'C')
+        pdf.set_font('Times', 'B', 8)
+        pdf.cell(90, 4, 'ASSINATURA DO TÉCNICO', 0, 0, 'C')
         pdf.cell(10, 4, '', 0)
         pdf.cell(90, 4, 'ASSINATURA DO CLIENTE', 0, 1, 'C')
 
         # ✅ Nome do técnico lido da BD
         pdf.set_y(curr_y + 6)
-        pdf.set_font('times', 'B', 9)
+        pdf.set_font('Times', 'B', 9)
         nome_tec_assinatura = clean_text(i.nome_assinatura_tecnico or "")
         pdf.cell(90, 4, nome_tec_assinatura, 0, 0, 'C')
         pdf.cell(10, 4, '', 0)
@@ -313,7 +310,7 @@ def gerar_pdf_intervencao(
 
         # ✅ Data do técnico lida da BD
         pdf.set_y(curr_y + 11)
-        pdf.set_font('times', 'I', 7)
+        pdf.set_font('Times', 'I', 7)
         data_tec = clean_text(i.data_assinatura_tecnico or "")
         pdf.cell(90, 4, data_tec, 0, 0, 'C')
         pdf.cell(10, 4, '', 0)
@@ -323,12 +320,12 @@ def gerar_pdf_intervencao(
         pdf.ln(10)
 
         pdf.set_xy(10, pdf.get_y())
-        pdf.set_font('times', 'B', 10)
-        pdf.multi_cell(190, 6, "Caro Cliente faca sempre uma copia deste documento para atestar a veracidade dos factos, findo assistencia, o cliente dispoe de 2 dias uteis para eventuais reclamacoes.", 0, 'C')
+        pdf.set_font('Times', 'B', 10)
+        pdf.multi_cell(190, 6, "Caro Cliente faça sempre uma cópia deste documento para atestar a veracidade dos factos, finda a assistência, o cliente dispõe de 2 dias úteis para eventuais reclamações.", 0, 'C')
 
         pdf.set_xy(10, pdf.get_y())
-        pdf.set_font('times', 'B', 10)
-        pdf.multi_cell(190, 6, "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5", 0, 'C')
+        pdf.set_font('Times', 'B', 10)
+        pdf.multi_cell(190, 6, "Em caso de dúvidas não hesite em contactar-nos através dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439", 0, 'C')
         pdf.ln(5)
 
     
@@ -371,6 +368,11 @@ def download_pdf_intervencao(
         pdf.alias_nb_pages()
         pdf.add_page()
 
+        _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+        pdf.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
+        pdf.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
+        pdf.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))  
+
         def draw_section_header(pdf, title):
              # se não couber o cabeçalho + pelo menos uma linha, salta de página
             if pdf.get_y() + 20 > pdf.h - 35:
@@ -378,35 +380,35 @@ def download_pdf_intervencao(
             pdf.set_fill_color(200, 225, 255)
             curr_y = pdf.get_y()
             pdf.rect(10, curr_y, 190, 10, 'F')
-            pdf.set_font('times', 'B', 12)
+            pdf.set_font('Times', 'B', 10)
             pdf.cell(0, 10, clean_text(title), 0, 1, 'L')
             pdf.ln(2)
 
         # --- Dados da Intervencao ---
-        draw_section_header(pdf, f"DADOS DA INTERVENCAO: {i.numero if i.numero else 'N/A'}")
+        draw_section_header(pdf, f"DADOS DA INTERVENÇÃO: {i.numero if i.numero else 'N/A'}")
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(40, 8, "Titulo:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Título:", 0)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.titulo)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Status:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.status)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Prioridade:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(str(i.prioridade)), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Data de Abertura:", 0)
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
 
         data_formatada = (
             i.data_criacao.strftime("%d/%m/%Y %H:%M")
-            if i.data_criacao else "N/A"
+            if i.data_criacao else "Não definido"
         )
 
         pdf.cell(0, 8, data_formatada, 0, 1)
@@ -416,35 +418,40 @@ def download_pdf_intervencao(
         # --- Cliente ---
         draw_section_header(pdf, "CLIENTE")
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Nome:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.nome if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.nome if i.cliente else "Não definido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Empresa:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.empresa if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.empresa if i.cliente else "Não definido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Email:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.cliente.email if i.cliente else "N/A"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.cliente.email if i.cliente else "Não definido"), 0, 1)
+
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Solicitante:", 0)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.solicitante or "Não definido"), 0, 1)
 
         pdf.ln(5)
 
         # --- Tecnico ---
         draw_section_header(pdf, "TECNICO RESPONSAVEL")
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Nome:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Nao atribuido"), 0, 1)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.tecnico.nome if i.tecnico else "Não atribuido"), 0, 1)
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(40, 8, "Modo de Resolucao:", 0)
-        pdf.set_font('times', '', 10)
-        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Nao definido"), 0, 1)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Modo de Resolução:", 0)
+        pdf.set_font('Times', '', 10)
+        pdf.cell(0, 8, clean_text(i.modo_resolucao or "Não definido"), 0, 1)
 
         pdf.ln(5)
 
@@ -490,9 +497,9 @@ def download_pdf_intervencao(
             pdf.ln(2)
 
         # --- Descricao do Problema ---
-        draw_section_header(pdf, "DESCRICAO DO PROBLEMA")
+        draw_section_header(pdf, "DESCRIÇÃO DO PROBLEMA")
 
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
 
         pdf.multi_cell(
             0,
@@ -500,23 +507,23 @@ def download_pdf_intervencao(
             clean_text(
                 str(i.descricao)
                 if i.descricao
-                else "Sem descricao do problema disponivel."
+                else "Sem descrição do problema disponível."
             )
         )
 
         pdf.ln(5)
 
         # --- Descricao da Solucao ---
-        draw_section_header(pdf, "DESCRICAO DA SOLUCAO")
+        draw_section_header(pdf, "DESCRIÇÃO DA SOLUÇÃO")
 
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
 
         if not i.registros_horas:
-            pdf.multi_cell(0, 8, "Nenhuma tarefa registrada ate o momento.")
+            pdf.multi_cell(0, 8, "Nenhuma tarefa registrada até ao momento.")
         else:
             for reg in i.registros_horas:
-                data_reg = reg.data if reg.data else "N/A"
-                nome_tec = clean_text(reg.tecnico.nome) if reg.tecnico else "N/A"
+                data_reg = reg.data if reg.data else "Não definido"
+                nome_tec = clean_text(reg.tecnico.nome) if reg.tecnico else "Não definido"
                 descricao = clean_text(reg.descricao) if reg.descricao else ""
 
                 texto_tarefa = f"- [{data_reg}] [{nome_tec}] {descricao}"
@@ -528,8 +535,8 @@ def download_pdf_intervencao(
         # --- Resumo de Tempo ---
         draw_section_header(pdf, "RESUMO DE TEMPO")
 
-        hora_inicio_str = "N/A"
-        hora_fim_str = "N/A"
+        hora_inicio_str = "Não definido"
+        hora_fim_str = "Não definido"
 
         if i.registros_horas:
             primeiro_reg = i.registros_horas[0]
@@ -537,30 +544,30 @@ def download_pdf_intervencao(
 
             hora_inicio_str = (
                 primeiro_reg.hora_inicio
-                if primeiro_reg.hora_inicio else "N/A"
+                if primeiro_reg.hora_inicio else "Não definido"
             )
 
             hora_fim_str = (
                 ultimo_reg.hora_fim
-                if ultimo_reg.hora_fim else "N/A"
+                if ultimo_reg.hora_fim else "Não definido"
             )
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(60, 10, "Hora de Inicio da intervencao:", 0)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(60, 10, "Hora de Início da intervenção:", 0)
 
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 10, hora_inicio_str, 0, 1)
 
-        pdf.set_font('times', 'B', 10)
-        pdf.cell(60, 10, "Hora de Termino da intervencao:", 0)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(60, 10, "Hora de Término da intervenção:", 0)
 
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 10, hora_fim_str, 0, 1)
 
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.cell(60, 10, "Total de Horas:", 0)
 
-        pdf.set_font('times', '', 10)
+        pdf.set_font('Times', '', 10)
         pdf.cell(
             0,
             10,
@@ -598,15 +605,15 @@ def download_pdf_intervencao(
 
         pdf.set_y(curr_y + 1)
 
-        pdf.set_font('times', 'B', 8)
+        pdf.set_font('Times', 'B', 8)
 
-        pdf.cell(90, 4, 'ASSINATURA DO TECNICO', 0, 0, 'C')
+        pdf.cell(90, 4, 'ASSINATURA DO TÉCNICO', 0, 0, 'C')
         pdf.cell(10, 4, '', 0)
         pdf.cell(90, 4, 'ASSINATURA DO CLIENTE', 0, 1, 'C')
 
         pdf.set_y(curr_y + 6)
 
-        pdf.set_font('times', 'B', 9)
+        pdf.set_font('Times', 'B', 9)
 
         # ✅ Usa sempre o que está guardado na BD
         nome_tec_assinatura = clean_text(
@@ -623,7 +630,7 @@ def download_pdf_intervencao(
 
         pdf.set_y(curr_y + 11)
 
-        pdf.set_font('times', 'I', 7)
+        pdf.set_font('Times', 'I', 7)
 
         # ✅ Data do técnico vem sempre da BD — nunca muda
         data_tec = clean_text(i.data_assinatura_tecnico or "")
@@ -638,11 +645,11 @@ def download_pdf_intervencao(
         pdf.ln(10)
 
         pdf.set_xy(10, pdf.get_y())
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.multi_cell(190, 6, "Caro Cliente faca sempre uma copia deste documento para atestar a veracidade dos factos, findo assistencia, o cliente dispoe de 2 dias uteis para eventuais reclamacoes.", 0, 'C')
 
         pdf.set_xy(10, pdf.get_y())
-        pdf.set_font('times', 'B', 10)
+        pdf.set_font('Times', 'B', 10)
         pdf.multi_cell(190, 6, "Em caso de duvidas nao hesite em contactar-nos atraves dos seguintes terminais: Geral.clacstecnologia@gmail.com | 925 505 439 | 918 945 5", 0, 'C')
 
         pdf.ln(5)
