@@ -28,15 +28,24 @@ router = APIRouter(tags=["relatorios"])
 
 # ─── PDF base ────────────────────────────────────────────────────────────────
 class PDF(FPDF):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        import os
+        _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+        self.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
+        self.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
+        self.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))
+
     def header(self):
         if self.page_no() == 1:
             try:
                 self.image('LogoCLACS.png', 10, 8, 45)
             except:
                 pass
-            self.set_font('times', 'B', 18)
+            self.set_font('Times', 'B', 18)
             self.cell(0, 10, 'CLACS - SISTEMA DE SUPORTE', 0, 1, 'C')
-            self.set_font('times', 'I', 12)
+            self.set_font('Times', 'I', 12)
             self.cell(0, 7, 'Relatório Mensal do Cliente', 0, 1, 'C')
             self.set_draw_color(0, 0, 0)
             self.line(10, 35, 200, 35)
@@ -85,7 +94,7 @@ def draw_section_header(pdf: PDF, title: str):
     pdf.set_text_color(255, 255, 255)
     curr_y = pdf.get_y()
     pdf.rect(10, curr_y, 190, 10, 'F')
-    pdf.set_font('times', 'B', 12)
+    pdf.set_font('Times', 'B', 12)
     pdf.set_xy(12, curr_y)
     pdf.cell(186, 10, clean_text(title), 0, 1, 'L')
     pdf.set_text_color(0, 0, 0)
@@ -114,7 +123,7 @@ def draw_progress_bar(pdf: PDF, percent: float):
     pdf.set_draw_color(0, 0, 0)
     # label
     pdf.set_y(bar_y + bar_h + 1)
-    pdf.set_font('times', 'I', 8)
+    pdf.set_font('Times', 'I', 8)
     pdf.set_text_color(80, 80, 80)
     pdf.cell(0, 5, f'{percent:.1f}% utilizado', 0, 1, 'R')
     pdf.set_text_color(0, 0, 0)
@@ -181,11 +190,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
     pdf.alias_nb_pages()
     pdf.add_page()
 
-    import os
-    _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
-    pdf.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
-    pdf.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
-    pdf.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))
+  
 
     # Título
     pdf.set_font('Times', 'B', 12)

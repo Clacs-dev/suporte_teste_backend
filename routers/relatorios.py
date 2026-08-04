@@ -12,6 +12,15 @@ from datetime import datetime
 router = APIRouter(tags=["relatorios"])
 
 class PDF(FPDF):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        import os
+        _fonts = os.path.join(os.path.dirname(os.path.dirname(__file__)), "fonts")
+        self.add_font("Times", "", os.path.join(_fonts, "times.ttf"))
+        self.add_font("Times", "B", os.path.join(_fonts, "timesbd.ttf"))
+        self.add_font("Times", "I", os.path.join(_fonts, "timesi.ttf"))
+
     def rounded_rect(self, x, y, w, h, r, style = ''):
         k = self.k
         hp = self.h
