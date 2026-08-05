@@ -17,12 +17,20 @@ def texto(t):
         "\u2013": "-", "\u2014": "-", "\u2012": "-", "\u2015": "-", "\u2011": "-",
         "\u2018": "'", "\u2019": "'", "\u201a": "'", "\u201b": "'",
         "\u201c": '"', "\u201d": '"', "\u201e": '"',
-        "\u2026": "...", "\u2022": "-", "\u00b7": ".",
-        "\u00ab": '"', "\u00bb": '"', "\u00a0": " ",
+        "\u2026": "...", "\u2022": "-", "\u25cf": "-", "\u25aa": "-",
+        "\u2023": "-", "\u2043": "-", "\u00b7": ".", "\u00ab": '"', "\u00bb": '"',
+        "\u00a0": " ", "\u200b": "", "\ufeff": "",
     }
     for k, v in subs.items():
         t = t.replace(k, v)
-    return t
+    # remover qualquer caractere que a fonte Times (latin) nao suporta
+    resultado = []
+    for ch in t:
+        if ord(ch) < 256 or ch in "áàâãéêíóôõúçÁÀÂÃÉÊÍÓÔÕÚÇ":
+            resultado.append(ch)
+        else:
+            resultado.append("")  # remove o que a fonte nao tem
+    return "".join(resultado)
 
 def _data_do_registo(r):
     from datetime import datetime
