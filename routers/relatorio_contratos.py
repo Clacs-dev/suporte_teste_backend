@@ -197,7 +197,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
     )
     pendentes = [
         i for i in intervencoes_cliente
-        if i.status not in ("Resolvido", "Concluído")
+        if i.status not in ("Resolvido", "Concluído", "Fechado")
     ]
 
     total_min = sum(int(round(float(r.horas or 0) * 60)) for r in registros)
