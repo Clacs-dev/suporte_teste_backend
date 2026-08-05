@@ -319,7 +319,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
             pdf.multi_cell(0, 7, texto(f'- Intervenção "{i.titulo}" por fechar'), new_x="LMARGIN", new_y="NEXT")
     else:
         pdf.cell(0, 7, "- Nenhum.", 0, 1, 'L')
-    pdf.ln(6)
+    pdf.ln(9)
 
     # Local e data
     pdf.set_font('Times', '', 12)
