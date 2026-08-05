@@ -305,7 +305,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
         pdf.set_x(pdf.l_margin)
         pdf.set_font('Times', '', 12)
         pdf.multi_cell(0, 7, texto(r.descricao or "Sem descricão."), new_x="LMARGIN", new_y="NEXT")
-        pdf.ln(3)
+        pdf.ln(5)
 
     # Solicitações e Pendentes
     pdf.set_x(pdf.l_margin)
