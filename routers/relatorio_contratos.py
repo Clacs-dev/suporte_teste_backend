@@ -45,7 +45,10 @@ def _data_do_registo(r):
     return val
 router = APIRouter(tags=["relatorios"])
 
-
+def _data_criacao_intervencao(r):
+    if r.intervencao and r.intervencao.data_criacao:
+        return r.intervencao.data_criacao
+    return _data_do_registo(r)
 # ─── PDF base ────────────────────────────────────────────────────────────────
 class PDF(FPDF):
 
@@ -177,7 +180,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
         .all()
     )
     def _no_intervalo(r):
-        d = _data_do_registo(r)
+        d = _data_criacao_intervencao(r)
         if not d:
             return False
         if di and d < di:
@@ -187,7 +190,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
         return True
     registros = [r for r in registros if _no_intervalo(r)]
 
-    registros.sort(key=lambda r: _data_do_registo(r))
+    registros.sort(key=lambda r: _data_criacao_intervencao(r))
 
     # Intervenções pendentes do mês (não resolvidas nem concluídas)
     intervencoes_cliente = (

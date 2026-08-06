@@ -121,6 +121,16 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 
     update_data = intervencao.model_dump(exclude_unset=True)
 
+    # Converter data_criacao (string YYYY-MM-DD) para datetime
+    if "data_criacao" in update_data and update_data["data_criacao"]:
+        from datetime import datetime
+        try:
+            update_data["data_criacao"] = datetime.strptime(update_data["data_criacao"][:10], "%Y-%m-%d")
+        except Exception:
+            del update_data["data_criacao"]
+    elif "data_criacao" in update_data:
+        del update_data["data_criacao"]
+
     # Tratar string vazia como None para evitar FK inválida
     if "tecnico_id" in update_data and update_data["tecnico_id"] == "":
         update_data["tecnico_id"] = None
@@ -138,6 +148,11 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 
     for key, value in update_data.items():
         setattr(db_intervencao, key, value)
+
+    # Registar automaticamente a data de resolução ao marcar "Resolvido"
+    if db_intervencao.status == "Resolvido" and status_anterior != "Resolvido":
+        from datetime import datetime
+        db_intervencao.data_resolucao = datetime.now()    
 
     db.commit()
     db.refresh(db_intervencao)

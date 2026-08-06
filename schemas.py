@@ -132,7 +132,7 @@ class IntervencaoBase(BaseSchema):
     data_agendada: Optional[datetime] = None
     modo_resolucao: Optional[str] = None
     solicitante: Optional[str] = None
-
+    
 class IntervencaoCreate(IntervencaoBase):
     anexos: Optional[List[dict]] = None
     
@@ -145,6 +145,7 @@ class IntervencaoUpdate(BaseSchema):
     prioridade: Optional[str] = None
     categoria: Optional[str] = None
     modo_resolucao: Optional[str] = None
+    data_criacao: Optional[str] = None
     solicitante: Optional[str] = None
 
 
@@ -181,7 +182,7 @@ class IntervencaoOut(BaseModel):
     empresa_nome: Optional[str] = None
     modo_resolucao: Optional[str] = None
     solicitante: Optional[str] = None
-
+    data_resolucao: Optional[datetime] = None
 
     
 class RegistroHorasBase(BaseSchema):
