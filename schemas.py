@@ -135,7 +135,7 @@ class IntervencaoBase(BaseSchema):
     
 class IntervencaoCreate(IntervencaoBase):
     anexos: Optional[List[dict]] = None
-    
+    data_criacao: Optional[str] = None
 
 class IntervencaoUpdate(BaseSchema):
     titulo: Optional[str] = None
@@ -183,6 +183,7 @@ class IntervencaoOut(BaseModel):
     modo_resolucao: Optional[str] = None
     solicitante: Optional[str] = None
     data_resolucao: Optional[datetime] = None
+    data_fecho: Optional[datetime] = None
 
     
 class RegistroHorasBase(BaseSchema):

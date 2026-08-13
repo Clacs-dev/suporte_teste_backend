@@ -271,7 +271,7 @@ def gerar_relatorio_mensal_cliente(contrato_id: str, data_inicio: str = None, da
     for r in registros:
         d = _data_criacao_intervencao(r)
         hi = r.hora_inicio or "--:--"
-        hf = r.hora_fim or "--:--"
+        hf = r.hora_fim or "--:--"                                                                                                                                                                
         tecnico_nome = r.tecnico.nome if r.tecnico else "Não definido"
         pdf.set_x(pdf.l_margin)
         pdf.set_font('Times', 'B', 12)

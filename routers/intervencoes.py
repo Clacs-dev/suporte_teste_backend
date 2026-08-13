@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Optional
 import models, schemas, database
+from datetime import datetime
 from routers.notificacoes import criar_notificacao
 router = APIRouter(prefix="/intervencoes", tags=["intervencoes"])
 
@@ -73,8 +74,19 @@ def create_intervencao(intervencao: schemas.IntervencaoCreate, db: Session = Dep
     count = db.query(models.Intervencao).count()
     numero = f"INT-{2026}-{(count + 1):03d}"
 
+    dados = intervencao.model_dump(exclude={'anexos'})
+
+    # Converter data_criacao (string YYYY-MM-DD) para datetime, ou usar o automatico
+    if dados.get("data_criacao"):
+        try:
+            dados["data_criacao"] = datetime.strptime(dados["data_criacao"][:10], "%Y-%m-%d")
+        except Exception:
+            dados.pop("data_criacao", None)
+    else:
+        dados.pop("data_criacao", None)
+
     db_intervencao = models.Intervencao(
-        **intervencao.model_dump(exclude={'anexos'}),
+        **dados,
         numero=numero
     )
     db.add(db_intervencao)
@@ -123,7 +135,6 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 
     # Converter data_criacao (string YYYY-MM-DD) para datetime
     if "data_criacao" in update_data and update_data["data_criacao"]:
-        from datetime import datetime
         try:
             update_data["data_criacao"] = datetime.strptime(update_data["data_criacao"][:10], "%Y-%m-%d")
         except Exception:
@@ -151,8 +162,11 @@ def update_intervencao(id: str, intervencao: schemas.IntervencaoUpdate, db: Sess
 
     # Registar automaticamente a data de resolução ao marcar "Resolvido"
     if db_intervencao.status == "Resolvido" and status_anterior != "Resolvido":
-        from datetime import datetime
+    
         db_intervencao.data_resolucao = datetime.now()    
+
+    if db_intervencao.status == "Fechado" and status_anterior != "Fechado":    
+        db_intervencao.data_fecho = datetime.now()
 
     db.commit()
     db.refresh(db_intervencao)

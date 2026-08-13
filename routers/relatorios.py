@@ -162,10 +162,17 @@ def gerar_pdf_intervencao(
         pdf.set_font('Times', 'B', 10)
         pdf.cell(40, 8, "Data de Abertura:", 0)
         pdf.set_font('Times', '', 10)
-        data_formatada = i.data_criacao.strftime("%d/%m/%Y %H:%M") if i.data_criacao else "Não definido"
+        data_formatada = i.data_criacao.strftime("%d/%m/%Y") if i.data_criacao else "Não definido"
         pdf.cell(0, 8, data_formatada, 0, 1)
 
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Data de Fecho:", 0)
+        pdf.set_font('Times', '', 10)
+        data_fecho = i.data_fecho.strftime("%d/%m/%Y %H:%M") if i.data_fecho else ""
+        pdf.cell(0, 8, clean_text(data_fecho), 0, 1)
+
         pdf.ln(5)
+        # --- Cliente ---
 
         # --- Cliente ---
         draw_section_header(pdf, "CLIENTE")
@@ -210,8 +217,13 @@ def gerar_pdf_intervencao(
         pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(i.modo_resolucao or "Não definido"), 0, 1)
 
-        pdf.ln(5)
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Data de Resolução:", 0)
+        pdf.set_font('Times', '', 10)
+        data_res = i.data_resolucao.strftime("%d/%m/%Y %H:%M") if i.data_resolucao else ""
+        pdf.cell(0, 8, clean_text(data_res), 0, 1)
 
+        pdf.ln(5)
         # --- Imagens Anexadas ---
         imagens = [a for a in i.anexos if a.tipo and a.tipo.startswith("image")]
         if imagens:
@@ -433,11 +445,16 @@ def download_pdf_intervencao(
         pdf.set_font('Times', '', 10)
 
         data_formatada = (
-            i.data_criacao.strftime("%d/%m/%Y %H:%M")
+            i.data_criacao.strftime("%d/%m/%Y")
             if i.data_criacao else "Não definido"
         )
-
         pdf.cell(0, 8, data_formatada, 0, 1)
+
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Data de Fecho:", 0)
+        pdf.set_font('Times', '', 10)
+        data_fecho = i.data_fecho.strftime("%d/%m/%Y %H:%M") if i.data_fecho else ""
+        pdf.cell(0, 8, clean_text(data_fecho), 0, 1)
 
         pdf.ln(5)
 
@@ -478,6 +495,12 @@ def download_pdf_intervencao(
         pdf.cell(40, 8, "Modo de Resolução:", 0)
         pdf.set_font('Times', '', 10)
         pdf.cell(0, 8, clean_text(i.modo_resolucao or "Não definido"), 0, 1)
+
+        pdf.set_font('Times', 'B', 10)
+        pdf.cell(40, 8, "Data de Resolução:", 0)
+        pdf.set_font('Times', '', 10)
+        data_res = i.data_resolucao.strftime("%d/%m/%Y %H:%M") if i.data_resolucao else ""
+        pdf.cell(0, 8, clean_text(data_res), 0, 1)
 
         pdf.ln(5)
 

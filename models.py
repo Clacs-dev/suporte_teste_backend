@@ -93,6 +93,7 @@ class Intervencao(Base):
     data_assinatura_cliente = Column(String, nullable=True)   # ← adiciona
     modo_resolucao = Column(String, nullable=True)  # Remoto, Presencial
     data_resolucao = Column(DateTime, nullable=True)
+    data_fecho = Column(DateTime, nullable=True)
     solicitante = Column(String, nullable=True)
     
 
