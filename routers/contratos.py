@@ -78,6 +78,11 @@ def get_contratos_cliente(cliente_id: str, db: Session = Depends(database.get_db
 
 @router.post("", response_model=schemas.APIResponse)
 def create_contrato(contrato: schemas.ContratoCreate, db: Session = Depends(database.get_db)):
+    # Verificar o tipo do cliente
+    cliente = db.query(models.Cliente).filter(models.Cliente.id == contrato.cliente_id).first()
+    if cliente and cliente.tipo_cliente == "Sem Contrato":
+        return {"success": False, "error": "Este cliente é do tipo 'Sem Contrato'. Edite-o para 'Com Contrato' antes de criar um contrato."}
+
     db_contrato = models.Contrato(**contrato.model_dump())
     db.add(db_contrato)
     db.commit()

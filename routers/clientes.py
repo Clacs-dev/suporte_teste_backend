@@ -71,6 +71,7 @@ def create_cliente(cliente: schemas.ClienteCreate, db: Session = Depends(databas
             nif=cliente.nif,
             endereco=cliente.endereco,
             status=cliente.status,
+            tipo_cliente=cliente.tipo_cliente,
             usuario_id=usuario_id
         )
         db.add(db_cliente)
@@ -107,6 +108,17 @@ def update_cliente(id: str, cliente: schemas.ClienteUpdate, db: Session = Depend
         ).first()
         if db_usuario:
             db_usuario.hashed_password = auth.get_password_hash(senha)
+
+        # Impedir marcar como "Sem Contrato" se o cliente tem contratos reais
+    if update_data.get("tipo_cliente") == "Sem Contrato":
+        tem_contrato = db.query(models.Contrato).filter(
+            models.Contrato.cliente_id == id
+        ).first()
+        if tem_contrato:
+            return {"success": False, "error": "Não é possível marcar como 'Sem Contrato': o cliente tem contrato(s) associado(s). Remova o(s) contrato(s) primeiro."}
+
+    for key, value in update_data.items():
+        setattr(db_cliente, key, value)        
 
     for key, value in update_data.items():
         setattr(db_cliente, key, value)

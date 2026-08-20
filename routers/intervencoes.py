@@ -85,6 +85,22 @@ def create_intervencao(intervencao: schemas.IntervencaoCreate, db: Session = Dep
     else:
         dados.pop("data_criacao", None)
 
+       # Verificar o tipo de cliente
+    cliente = db.query(models.Cliente).filter(
+        models.Cliente.id == dados.get("cliente_id")
+    ).first()
+
+    if cliente and cliente.tipo_cliente == "Com Contrato":
+        # Cliente com contrato: o contrato é obrigatório
+        contrato = db.query(models.Contrato).filter(
+            models.Contrato.cliente_id == dados.get("cliente_id")
+        ).first()
+        if not contrato:
+            return {"success": False, "error": "Não é possível criar intervenção: o cliente não tem contrato associado."}
+        dados["contrato_id"] = contrato.id
+    # Cliente sem contrato: permite intervenção sem contrato (contrato_id fica None)
+        
+
     db_intervencao = models.Intervencao(
         **dados,
         numero=numero

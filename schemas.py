@@ -50,6 +50,7 @@ class ClienteBase(BaseSchema):
     nif: Optional[str] = None
     endereco: Optional[str] = None
     status: Optional[str] = "Ativo"
+    tipo_cliente: Optional[str] = "Com Contrato"
 
 class ClienteCreate(ClienteBase):
     senha: Optional[str] = None
@@ -63,6 +64,7 @@ class ClienteUpdate(BaseSchema):
     nif: Optional[str] = None
     endereco: Optional[str] = None
     status: Optional[str] = None
+    tipo_cliente: Optional[str] = None
 
 class ClienteOut(ClienteBase):
     id: str

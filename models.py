@@ -29,6 +29,7 @@ class Cliente(Base):
     nif = Column(String, nullable=True)
     endereco = Column(String, nullable=True)
     status = Column(String, default="Ativo")
+    tipo_cliente = Column(String, default="Com Contrato")  # "Com Contrato" ou "Sem Contrato"
     usuario_id = Column(String, ForeignKey("usuarios.id"), nullable=True)
     data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
