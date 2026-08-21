@@ -13,6 +13,7 @@ app = FastAPI(title="CLACS API", version="1.0.0")
 
 origins = [
     "http://localhost:5173",
+    "https://suporte-clacs.vercel.app",
     "https://clacs-frontend.vercel.app",
     "https://suporte.clacstecnologia.com",
 ]
