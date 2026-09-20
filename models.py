@@ -146,3 +146,57 @@ class Anexo(Base):
     data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 
     intervencao = relationship("Intervencao", back_populates="anexos")    
+
+class Movimento(Base):
+    __tablename__ = "movimentos"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    tipo = Column(String, nullable=False)  # "Entrada" ou "Saida"
+    numero = Column(String, nullable=True)  # Nº (ex.: 001 nas despesas, E-001 nas entradas)
+    descricao = Column(String, nullable=True)
+    valor = Column(Float, nullable=False)
+    categoria = Column(String, nullable=True)
+    forma_pagamento = Column(String, nullable=True)  # Numerário, Multicaixa, ...
+    destinatario = Column(String, nullable=True)  # A quem foi atribuído/entregue o material (despesas)
+    data = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    conta_bancaria_id = Column(String, ForeignKey("contas_bancarias.id"), nullable=True)
+
+    conta = relationship("ContaBancaria", back_populates="movimentos")
+
+
+class ContaBancaria(Base):
+    __tablename__ = "contas_bancarias"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    banco = Column(String, nullable=False)
+    numero_conta = Column(String, nullable=True)
+    titular = Column(String, nullable=True)
+    saldo_inicial = Column(Float, nullable=False, default=0.0)
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    movimentos = relationship("Movimento", back_populates="conta")
+
+
+class Categoria(Base):
+    __tablename__ = "categorias"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    nome = Column(String, nullable=False, unique=True)
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class Cobranca(Base):
+    __tablename__ = "cobrancas"
+
+    id = Column(String, primary_key=True, index=True, default=generate_uuid)
+    cliente_id = Column(String, ForeignKey("clientes.id"), nullable=False)
+    mes = Column(Integer, nullable=False)
+    ano = Column(Integer, nullable=False)
+    pago = Column(Boolean, default=False)
+    valor = Column(Float, default=0.0)
+    data_pagamento = Column(String, nullable=True)
+    observacao = Column(String, nullable=True)
+    data_criacao = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+    cliente = relationship("Cliente")

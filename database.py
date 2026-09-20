@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
@@ -27,6 +27,16 @@ else:
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
+
+# Micro-migrações idempotentes (thais colunas em tabelas existentes)
+def migrar():
+    insp = inspect(engine)
+    tabelas = set(insp.get_table_names())
+    if "movimentos" in tabelas:
+        colunas = {c["name"] for c in insp.get_columns("movimentos")}
+        if "destinatario" not in colunas:
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE movimentos ADD COLUMN destinatario VARCHAR NULL"))
 
 # Dependency
 def get_db():

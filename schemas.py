@@ -227,3 +227,83 @@ class NotificacaoOut(BaseModel):
     lida: bool
     intervencao_id: Optional[str] = None
     data_criacao: datetime
+
+
+class MovimentoBase(BaseSchema):
+    tipo: str  # "Entrada" ou "Saida"
+    numero: Optional[str] = None
+    descricao: Optional[str] = None
+    valor: float
+    categoria: Optional[str] = None
+    forma_pagamento: Optional[str] = None
+    destinatario: Optional[str] = None
+    data: Optional[str] = None
+    conta_bancaria_id: Optional[str] = None
+
+class MovimentoCreate(MovimentoBase):
+    pass
+
+class MovimentoUpdate(BaseSchema):
+    descricao: Optional[str] = None
+    valor: Optional[float] = None
+    categoria: Optional[str] = None
+    forma_pagamento: Optional[str] = None
+    destinatario: Optional[str] = None
+    data: Optional[str] = None
+    conta_bancaria_id: Optional[str] = None
+
+class MovimentoOut(BaseSchema):
+    id: str
+    tipo: str
+    numero: Optional[str] = None
+    descricao: Optional[str] = None
+    valor: float
+    categoria: Optional[str] = None
+    forma_pagamento: Optional[str] = None
+    destinatario: Optional[str] = None
+    data: datetime
+    data_criacao: datetime
+    conta_bancaria_id: Optional[str] = None
+
+class ContaBancariaCreate(BaseSchema):
+    banco: str
+    numero_conta: Optional[str] = None
+    titular: Optional[str] = None
+    saldo_inicial: Optional[float] = 0.0
+
+class ContaBancariaOut(BaseSchema):
+    id: str
+    banco: str
+    numero_conta: Optional[str] = None
+    titular: Optional[str] = None
+    saldo_inicial: float = 0.0
+    saldo: float = 0.0
+    data_criacao: datetime
+
+class CategoriaCreate(BaseSchema):
+    nome: str
+
+class CategoriaOut(BaseSchema):
+    id: str
+    nome: str
+    data_criacao: datetime
+
+class CobrancaCreate(BaseSchema):
+    cliente_id: str
+    mes: int
+    ano: int
+    pago: bool = False
+    valor: float = 0.0
+    data_pagamento: Optional[str] = None
+    observacao: Optional[str] = None
+
+class CobrancaOut(BaseSchema):
+    id: str
+    cliente_id: str
+    mes: int
+    ano: int
+    pago: bool
+    valor: float
+    data_pagamento: Optional[str] = None
+    observacao: Optional[str] = None
+    data_criacao: datetime
