@@ -3,7 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import database, models
-from fpdf import FPDF
+from fpdf import FPDF, FontFace
 import io
 import unicodedata
 import os
@@ -32,7 +32,7 @@ class PDF(FPDF):
             self.set_font('Times', 'I', 12)
             self.cell(0, 7, self.titulo, 0, 1, 'C')
             self.set_draw_color(0, 0, 0)
-            self.line(10, 35, self.w - 10, 35)
+            self.line(self.l_margin, 35, self.w - self.r_margin, 35)
             self.ln(10)
 
     def footer(self):
@@ -81,16 +81,19 @@ def _fmt_data(d):
 
 
 def draw_header(pdf, title):
+    hm = pdf.l_margin
     if pdf.get_y() + 20 > pdf.h - 30:
         pdf.add_page()
     pdf.set_fill_color(30, 90, 180)
     pdf.set_text_color(255, 255, 255)
     curr_y = pdf.get_y()
-    pdf.rect(10, curr_y, pdf.w - 20, 10, 'F')
+    bw = pdf.w - hm - pdf.r_margin
+    pdf.rect(hm, curr_y, bw, 10, 'F')
     pdf.set_font('Times', 'B', 12)
-    pdf.set_xy(12, curr_y)
-    pdf.cell(pdf.w - 20, 10, clean_text(title), 0, 1, 'L')
+    pdf.set_xy(hm, curr_y)
+    pdf.cell(bw, 10, clean_text(title), 0, 1, 'L')
     pdf.set_text_color(0, 0, 0)
+    pdf.set_fill_color(255, 255, 255)
     pdf.ln(2)
 
 
@@ -176,32 +179,39 @@ def relatorio_financeiro(
 
     # ── Tabela de movimentos ───────────────────────────────────────────────────
     draw_header(pdf, "MOVIMENTOS")
-    pdf.set_font('Times', 'B', 8)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(20, 7, "Nº", 1, 0, 'C', True)
-    pdf.cell(26, 7, "Data", 1, 0, 'C', True)
-    pdf.cell(30, 7, "Conta", 1, 0, 'C', True)
-    pdf.cell(42, 7, "Descrição", 1, 0, 'C', True)
-    pdf.cell(30, 7, "Destinatário", 1, 0, 'C', True)
-    pdf.cell(24, 7, "Categoria", 1, 0, 'C', True)
-    pdf.cell(36, 7, "Forma de pagamento", 1, 0, 'C', True)
-    pdf.cell(20, 7, "Tipo", 1, 0, 'C', True)
-    pdf.cell(49, 7, "Valor", 1, 1, 'C', True)
+    pdf.set_font('Times', '', 10)
 
-    pdf.set_font('Times', '', 8)
     if not movimentos:
+        pdf.set_font('Times', '', 10)
         pdf.cell(0, 7, "Nenhum movimento encontrado para os filtros selecionados.", 1, 1, 'C')
-    for m in movimentos:
-        conta_nome = contas[m.conta_bancaria_id].banco if m.conta_bancaria_id in contas else ""
-        pdf.cell(20, 7, clean_text(m.numero or ""), 1, 0, 'C')
-        pdf.cell(26, 7, clean_text(_fmt_data(m.data)), 1, 0, 'C')
-        pdf.cell(30, 7, clean_text(conta_nome), 1, 0, 'C')
-        pdf.cell(42, 7, clean_text(m.descricao or ""), 1, 0, 'C')
-        pdf.cell(30, 7, clean_text(m.destinatario or ""), 1, 0, 'C')
-        pdf.cell(24, 7, clean_text(m.categoria or ""), 1, 0, 'C')
-        pdf.cell(36, 7, clean_text(m.forma_pagamento or ""), 1, 0, 'C')
-        pdf.cell(20, 7, clean_text(m.tipo), 1, 0, 'C')
-        pdf.cell(49, 7, f"{float(m.valor or 0):,.0f}", 1, 1, 'C')
+    else:
+        linhas_mov = []
+        for m in movimentos:
+            conta_nome = contas[m.conta_bancaria_id].banco if m.conta_bancaria_id in contas else ""
+            linhas_mov.append([
+                clean_text(m.numero or ""),
+                clean_text(_fmt_data(m.data)),
+                clean_text(conta_nome),
+                clean_text(m.descricao or ""),
+                clean_text(m.destinatario or ""),
+                clean_text(m.categoria or ""),
+                clean_text(m.forma_pagamento or ""),
+                clean_text(m.tipo),
+                f"{float(m.valor or 0):,.0f}",
+            ])
+        rows_mov = [
+            ["Nº", "Data", "Conta", "Descrição", "Destinatário", "Categoria", "Forma de pagamento", "Tipo", "Valor"],
+            *linhas_mov,
+        ]
+        with pdf.table(
+            rows=rows_mov,
+            headings_style=FontFace(emphasis="BOLD", family="Times", size_pt=8, fill_color=(230, 230, 230), color=(0, 0, 0)),
+            col_widths=(20, 26, 30, 42, 30, 24, 36, 20, 49),
+            text_align=("CENTER", "CENTER", "CENTER", "LEFT", "LEFT", "LEFT", "LEFT", "CENTER", "RIGHT"),
+            line_height=5,
+            padding=1,
+        ):
+            pass
 
     pdf_bytes = bytes(pdf.output())
     pdf_stream = io.BytesIO(pdf_bytes)
@@ -273,25 +283,30 @@ def relatorio_cobrancas(
     pdf.cell(0, 7, f"Total a cobrar: Kz {total_cobrado:,.2f}   |   Total recebido: Kz {total_pago:,.2f}", 0, 1)
     pdf.ln(4)
 
-    pdf.set_font('Times', 'B', 8)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(55, 7, "Cliente", 1, 0, 'C', True)
-    pdf.cell(50, 7, "Email", 1, 0, 'C', True)
-    pdf.cell(40, 7, "Empresa", 1, 0, 'C', True)
-    pdf.cell(15, 7, "Pago?", 1, 0, 'C', True)
-    pdf.cell(30, 7, "Valor", 1, 0, 'C', True)
-    pdf.cell(27, 7, "Data pago", 1, 0, 'C', True)
-    pdf.cell(45, 7, "Observações", 1, 1, 'C', True)
-
-    pdf.set_font('Times', '', 8)
+    linhas_cob = []
     for l in linhas:
-        pdf.cell(55, 7, clean_text(l["nome"]), 1, 0, 'L')
-        pdf.cell(50, 7, clean_text(l.get("email") or ""), 1, 0, 'L')
-        pdf.cell(40, 7, clean_text(l["empresa"]), 1, 0, 'L')
-        pdf.cell(15, 7, "Sim" if l["pago"] else "Não", 1, 0, 'C')
-        pdf.cell(30, 7, f"{l['valor']:,.0f}", 1, 0, 'R')
-        pdf.cell(27, 7, clean_text(_fmt_data(l["data_pagamento"])), 1, 0, 'C')
-        pdf.cell(45, 7, clean_text(l["observacao"]), 1, 1, 'L')
+        linhas_cob.append([
+            clean_text(l["nome"]),
+            clean_text(l.get("email") or ""),
+            clean_text(l["empresa"]),
+            "Sim" if l["pago"] else "Não",
+            f"{l['valor']:,.0f}",
+            clean_text(_fmt_data(l["data_pagamento"])),
+            clean_text(l["observacao"]),
+        ])
+    rows_cob = [
+        ["Cliente", "Email", "Empresa", "Pago?", "Valor", "Data pago", "Observações"],
+        *linhas_cob,
+    ]
+    with pdf.table(
+        rows=rows_cob,
+        headings_style=FontFace(emphasis="BOLD", family="Times", size_pt=8, fill_color=(230, 230, 230), color=(0, 0, 0)),
+        col_widths=(55, 50, 40, 15, 30, 27, 45),
+        text_align=("LEFT", "LEFT", "LEFT", "CENTER", "RIGHT", "CENTER", "LEFT"),
+        line_height=5,
+        padding=1,
+    ):
+        pass
 
     pdf_bytes = bytes(pdf.output())
     pdf_stream = io.BytesIO(pdf_bytes)
@@ -357,27 +372,17 @@ def relatorio_cobrancas_historico(db: Session = Depends(database.get_db)):
     draw_header(pdf, "HISTÓRICO DE PAGAMENTOS POR CLIENTE")
 
     nm = len(meses)
-    mw = max(12, min(24, int((pdf.w - 20 - 95) / max(nm, 1))))
-    pdf.set_font('Times', 'B', 7)
-    pdf.set_fill_color(230, 230, 230)
-    pdf.cell(55, 7, "Cliente", 1, 0, 'C', True)
-    pdf.cell(40, 7, "Empresa", 1, 0, 'C', True)
-    for m, a in meses:
-        pdf.cell(mw, 7, f"{m:02d}/{a}", 1, 0, 'C', True)
-    pdf.cell(mw, 7, "Total", 1, 1, 'C', True)
+    mw = max(12, min(26, int((pdf.w - 20 - 95) / max(nm + 1, 1))))
+    headings = ["Cliente", "Empresa"] + [f"{m:02d}/{a}" for m, a in meses] + ["Total"]
+    widths = [55, 40] + [mw] * nm + [mw]
 
-    pdf.set_font('Times', '', 7)
+    linhas_hist = []
     for cli in clientes:
         regs = {(c.mes, c.ano): c for c in por_cliente.get(cli.id, [])}
-        nome = (cli.nome or "").strip()
-        empresa = (cli.empresa or "").strip()
+        nome = clean_text((cli.nome or "").strip())
+        empresa = clean_text((cli.empresa or "").strip())
         total = sum(float(regs[k].valor or 0) for k in regs if regs[k].pago)
-        if len(nome) * 1.9 > 52:
-            nome = nome[:int(52 / 1.9)] + "..."
-        if len(empresa) * 1.9 > 37:
-            empresa = empresa[:int(37 / 1.9)] + "..."
-        pdf.cell(55, 7, clean_text(nome), 1, 0, 'L')
-        pdf.cell(40, 7, clean_text(empresa), 1, 0, 'L')
+        celulas = [nome, empresa]
         for m, a in meses:
             cob = regs.get((m, a))
             if cob and cob.pago:
@@ -386,8 +391,20 @@ def relatorio_cobrancas_historico(db: Session = Depends(database.get_db)):
                 texto = "Não"
             else:
                 texto = ""
-            pdf.cell(mw, 7, clean_text(texto), 1, 0, 'C')
-        pdf.cell(mw, 7, f"{total:,.0f}", 1, 1, 'C')
+            celulas.append(clean_text(texto))
+        celulas.append(f"{total:,.0f}")
+        linhas_hist.append(celulas)
+
+    rows_hist = [headings, *linhas_hist]
+    with pdf.table(
+        rows=rows_hist,
+        headings_style=FontFace(emphasis="BOLD", family="Times", size_pt=7, fill_color=(230, 230, 230)),
+        col_widths=tuple(widths),
+        text_align="CENTER",
+        line_height=4,
+        padding=0.5,
+    ):
+        pass
 
     pdf.ln(3)
     pdf.set_font('Times', 'I', 8)
