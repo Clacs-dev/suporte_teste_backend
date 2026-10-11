@@ -29,6 +29,14 @@ def _clientes_cobranca(db):
     )
 
 
+def valores_contratuais(db) -> dict:
+    """Valor contratual mensal por cliente: soma do valor_mensal dos contratos activos."""
+    valores = {}
+    for ct in db.query(models.Contrato).filter(models.Contrato.status == "Ativo").all():
+        valores[ct.cliente_id] = valores.get(ct.cliente_id, 0.0) + float(ct.valor_mensal or 0)
+    return valores
+
+
 @router.get("", response_model=schemas.APIResponse)
 def listar_cobrancas(mes: int = None, ano: int = None, db: Session = Depends(database.get_db)):
     q = db.query(models.Cobranca)
@@ -52,6 +60,7 @@ def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
             models.Cobranca.mes == mes, models.Cobranca.ano == ano
         ).all()
     }
+    contratuais = valores_contratuais(db)
 
     lista = []
     for cli in clientes:
@@ -61,6 +70,7 @@ def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
             "nome": cli.nome,
             "email": cli.email,
             "empresa": cli.empresa,
+            "valor_contratual": contratuais.get(cli.id, 0.0),
             "pago": bool(cob.pago) if cob else False,
             "valor": cob.valor if cob else 0.0,
             "data_pagamento": cob.data_pagamento if cob else None,
@@ -80,6 +90,8 @@ def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
                 "nao_pagantes": len(lista) - pagantes,
                 "total_cobrado": sum(x["valor"] for x in lista),
                 "total_pago": sum(x["valor"] for x in lista if x["pago"]),
+                "total_contratual": sum(x["valor_contratual"] for x in lista),
+                "total_nao_pago": sum(x["valor_contratual"] for x in lista if not x["pago"]),
             },
         },
     }

@@ -3,6 +3,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 import database, models
+from routers.cobrancas import valores_contratuais
 from fpdf import FPDF, FontFace
 import io
 import unicodedata
@@ -67,6 +68,16 @@ def clean_text(t):
         else:
             resultado.append("")
     return "".join(resultado)
+
+
+def fmt_moeda(valor, decimais=2):
+    """Formata um número no padrão português/angolano: 1.234.567,89"""
+    try:
+        n = float(valor or 0)
+    except (TypeError, ValueError):
+        n = 0.0
+    s = f"{n:,.{decimais}f}"
+    return s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
 
 
 def _fmt_data(d):
@@ -172,9 +183,9 @@ def relatorio_financeiro(
     draw_header(pdf, "RESUMO")
     pdf.set_font('Times', '', 10)
     pdf.cell(0, 7, f"Total de movimentos: {len(movimentos)}", 0, 1)
-    pdf.cell(0, 7, f"Total de Entradas: Kz {entradas:,.2f}", 0, 1)
-    pdf.cell(0, 7, f"Total de Saídas: Kz {saidas:,.2f}", 0, 1)
-    pdf.cell(0, 7, f"Saldo do período: Kz {saldo:,.2f}", 0, 1)
+    pdf.cell(0, 7, f"Total de Entradas: Kz {fmt_moeda(entradas)}", 0, 1)
+    pdf.cell(0, 7, f"Total de Saídas: Kz {fmt_moeda(saidas)}", 0, 1)
+    pdf.cell(0, 7, f"Saldo do período: Kz {fmt_moeda(saldo)}", 0, 1)
     pdf.ln(4)
 
     # ── Tabela de movimentos ───────────────────────────────────────────────────
@@ -197,7 +208,7 @@ def relatorio_financeiro(
                 clean_text(m.categoria or ""),
                 clean_text(m.forma_pagamento or ""),
                 clean_text(m.tipo),
-                f"{float(m.valor or 0):,.0f}",
+                fmt_moeda(m.valor),
             ])
         rows_mov = [
             ["Nº", "Data", "Conta", "Descrição", "Destinatário", "Categoria", "Forma de pagamento", "Tipo", "Valor"],
@@ -246,6 +257,7 @@ def relatorio_cobrancas(
             models.Cobranca.mes == mes, models.Cobranca.ano == ano
         ).all()
     }
+    contratuais = valores_contratuais(db)
 
     linhas = []
     for cli in clientes:
@@ -254,6 +266,7 @@ def relatorio_cobrancas(
             "nome": cli.nome,
             "email": cli.email or "",
             "empresa": cli.empresa or "",
+            "valor_contratual": contratuais.get(cli.id, 0.0),
             "pago": bool(cob.pago) if cob else False,
             "valor": float(cob.valor or 0) if cob else 0.0,
             "data_pagamento": cob.data_pagamento if cob else None,
@@ -263,6 +276,7 @@ def relatorio_cobrancas(
     pagantes = sum(1 for l in linhas if l["pago"])
     total_cobrado = sum(l["valor"] for l in linhas)
     total_pago = sum(l["valor"] for l in linhas if l["pago"])
+    total_nao_pago = sum(l["valor_contratual"] for l in linhas if not l["pago"])
 
     pdf = PDF(orientation="L", format="A4")
     pdf.titulo = "Mapa de Cobranças"
@@ -279,30 +293,31 @@ def relatorio_cobrancas(
     draw_header(pdf, f"MAPAS DE COBRANÇAS — {NOMES_MESES[mes].upper()} {ano}")
     pdf.set_font('Times', '', 10)
     pdf.cell(0, 7, f"Total de clientes: {len(linhas)}", 0, 1)
-    pdf.cell(0, 7, f"Pagantes: {pagantes}   |   Não pagantes: {len(linhas) - pagantes}", 0, 1)
-    pdf.cell(0, 7, f"Total a cobrar: Kz {total_cobrado:,.2f}   |   Total recebido: Kz {total_pago:,.2f}", 0, 1)
+    pdf.cell(0, 7, f"Pago: {pagantes}   |   Não pago: {len(linhas) - pagantes}", 0, 1)
+    pdf.cell(0, 7, f"Total a cobrar: Kz {fmt_moeda(total_cobrado)}   |   Total recebido: Kz {fmt_moeda(total_pago)}   |   Total não pago: Kz {fmt_moeda(total_nao_pago)}", 0, 1)
     pdf.ln(4)
 
     linhas_cob = []
     for l in linhas:
         linhas_cob.append([
-            clean_text(l["nome"]),
-            clean_text(l.get("email") or ""),
             clean_text(l["empresa"]),
+            clean_text(l.get("email") or ""),
+            clean_text(l["nome"]),
             "Sim" if l["pago"] else "Não",
-            f"{l['valor']:,.0f}",
+            fmt_moeda(l['valor_contratual']),
+            fmt_moeda(l['valor']),
             clean_text(_fmt_data(l["data_pagamento"])),
             clean_text(l["observacao"]),
         ])
     rows_cob = [
-        ["Cliente", "Email", "Empresa", "Pago?", "Valor", "Data pago", "Observações"],
+        ["Cliente", "Email", "Responsável", "Pago?", "Valor contratual", "Valor", "Data pago", "Observações"],
         *linhas_cob,
     ]
     with pdf.table(
         rows=rows_cob,
         headings_style=FontFace(emphasis="BOLD", family="Times", size_pt=8, fill_color=(230, 230, 230), color=(0, 0, 0)),
-        col_widths=(55, 50, 40, 15, 30, 27, 45),
-        text_align=("LEFT", "LEFT", "LEFT", "CENTER", "RIGHT", "CENTER", "LEFT"),
+        col_widths=(55, 42, 35, 15, 30, 30, 27, 40),
+        text_align=("LEFT", "LEFT", "LEFT", "CENTER", "RIGHT", "RIGHT", "CENTER", "LEFT"),
         line_height=5,
         padding=1,
     ):
@@ -392,7 +407,7 @@ def relatorio_cobrancas_historico(db: Session = Depends(database.get_db)):
             else:
                 texto = ""
             celulas.append(clean_text(texto))
-        celulas.append(f"{total:,.0f}")
+        celulas.append(fmt_moeda(total))
         linhas_hist.append(celulas)
 
     rows_hist = [headings, *linhas_hist]

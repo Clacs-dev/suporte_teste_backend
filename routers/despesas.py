@@ -7,6 +7,16 @@ import database, models, schemas
 router = APIRouter(tags=["financeiro"])
 
 
+def fmt_moeda(valor, decimais=2):
+    """Formata um número no padrão português/angolano: 1.234.567,89"""
+    try:
+        n = float(valor or 0)
+    except (TypeError, ValueError):
+        n = 0.0
+    s = f"{n:,.{decimais}f}"
+    return s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
 def calcular_saldo(db: Session) -> float:
     movimentos = db.query(models.Movimento).all()
     entradas = sum(m.valor for m in movimentos if m.tipo == "Entrada")
@@ -140,7 +150,7 @@ def criar_movimento(movimento: schemas.MovimentoCreate, db: Session = Depends(da
     if dados["tipo"] == "Saida":
         saldo_disponivel = saldo_conta(db, conta) if conta else calcular_saldo(db)
         if dados["valor"] > saldo_disponivel:
-            return {"success": False, "error": f"Saldo insuficiente. Saldo disponível: {saldo_disponivel:,.2f} Kz"}
+            return {"success": False, "error": f"Saldo insuficiente. Saldo disponível: {fmt_moeda(saldo_disponivel)} Kz"}
 
     # A entrada só tem valor; a descrição é preenchida automaticamente
     if not dados.get("descricao"):
@@ -300,7 +310,7 @@ def atualizar_movimento(id: str, payload: schemas.MovimentoUpdate, db: Session =
         novo_valor = dados.get("valor", mov.valor)
         saldo_disponivel = _saldo_disponivel_antes(db, mov, novo_conta_id)
         if novo_valor > saldo_disponivel:
-            return {"success": False, "error": f"Saldo insuficiente. Saldo disponível: {saldo_disponivel:,.2f} Kz"}
+            return {"success": False, "error": f"Saldo insuficiente. Saldo disponível: {fmt_moeda(saldo_disponivel)} Kz"}
 
     for k, v in dados.items():
         setattr(mov, k, v)

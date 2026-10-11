@@ -52,6 +52,16 @@ def clean_text(text):
     return text
 
 
+def fmt_moeda(valor, decimais=2):
+    """Formata um número no padrão português/angolano: 1.234.567,89"""
+    try:
+        n = float(valor or 0)
+    except (TypeError, ValueError):
+        n = 0.0
+    s = f"{n:,.{decimais}f}"
+    return s.replace(",", "\x00").replace(".", ",").replace("\x00", ".")
+
+
 def draw_section_header(pdf, title):
     pdf.set_fill_color(30, 90, 180)
     pdf.set_text_color(255, 255, 255)
@@ -103,7 +113,7 @@ def gerar_relatorio_geral(db: Session = Depends(database.get_db)):
     row(pdf, "Clientes Activos:", sum(1 for c in clientes if c.status == "Ativo"))
     row(pdf, "Total de Contratos:", len(contratos))
     row(pdf, "Contratos Activos:", sum(1 for c in contratos if c.status == "Ativo"))
-    row(pdf, "Faturamento Mensal:", f"Kz {faturamento:,.2f}")
+    row(pdf, "Faturamento Mensal:", f"Kz {fmt_moeda(faturamento)}")
     row(pdf, "Total de Tecnicos:", len(tecnicos))
     row(pdf, "Total de Intervencoes:", len(intervencoes))
     row(pdf, "Total de Horas Registadas:", f"{total_horas:.2f}h")
