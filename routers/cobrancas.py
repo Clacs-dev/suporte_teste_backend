@@ -7,6 +7,11 @@ from datetime import datetime
 router = APIRouter(prefix="/cobrancas", tags=["cobrancas"])
 
 
+def _limpar(valor: float) -> float:
+    """Remove o ruído de vírgula flutuante de uma soma (15 algarismos significativos)."""
+    return float(f"{valor:.15g}")
+
+
 def _clientes_cobranca(db):
     """Clientes que devem aparecer no módulo de cobranças.
 
@@ -88,10 +93,11 @@ def mapa_cobrancas(mes: int, ano: int, db: Session = Depends(database.get_db)):
                 "total_clientes": len(lista),
                 "pagantes": pagantes,
                 "nao_pagantes": len(lista) - pagantes,
-                "total_cobrado": sum(x["valor"] for x in lista),
-                "total_pago": sum(x["valor"] for x in lista if x["pago"]),
-                "total_contratual": sum(x["valor_contratual"] for x in lista),
-                "total_nao_pago": sum(x["valor_contratual"] for x in lista if not x["pago"]),
+                # a soma de decimais em float deixa ruído nas últimas casas (ex.: ,7399999998)
+                "total_cobrado": _limpar(sum(x["valor"] for x in lista)),
+                "total_pago": _limpar(sum(x["valor"] for x in lista if x["pago"])),
+                "total_contratual": _limpar(sum(x["valor_contratual"] for x in lista)),
+                "total_nao_pago": _limpar(sum(x["valor_contratual"] for x in lista if not x["pago"])),
             },
         },
     }
